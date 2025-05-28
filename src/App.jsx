@@ -8,6 +8,7 @@ import StoreCreationPage from "./Components/StoreCreationpage";
 import AboutPage from "./Components/About";
 import ContactUsPage from "./Components/ContactUs";
 import StoreDetailsPage from "./Components/Storedetailspage";
+import Footer from "./Components/Footer";
 const App = () => {
   return (
     <Router>
@@ -26,6 +27,7 @@ const App = () => {
           element={<div>Supplier Dashboard Coming Soon...</div>}
         />
       </Routes>
+      <Footer />
     </Router>
   );
 };
