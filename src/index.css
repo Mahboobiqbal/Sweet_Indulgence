@@ -19,9 +19,7 @@ body {
   color: var(--color-text-dark);
 }
 
-/* Add more custom styles as needed */
-
-/* You can also create custom utility classes like this: */
+/* Custom utility classes */
 @layer components {
   .btn-primary {
     @apply px-4 py-2 rounded-full bg-[#d3756b] text-white hover:bg-[#c25d52] transition-colors;

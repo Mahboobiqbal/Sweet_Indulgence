@@ -192,47 +192,44 @@ const HomePage = () => {
       </div>
 
       {/* Featured stores section */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-10 px-4">
         <h2 className="text-3xl font-bold text-[#5e3023] mb-2">Our Stores</h2>
         <p className="text-[#8c5f53] mb-10">
           Discover our bakeries across Pakistan
         </p>
 
-        <div className="flex justify-center">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-10 mx-auto">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {stores.map((store) => (
               <div
                 key={store.id}
-                className="relative w-120 h-120 rounded-lg overflow-hidden group shadow-lg mx-auto hover:shadow-xl transition-all duration-300"
+                className="rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col"
                 onClick={() => navigate(`/store/${store.id}`, { state: store })}
               >
-                {/* Image */}
-                <img
-                  src={store.image}
-                  alt={store.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
+                {/* Image container with fixed height */}
+                <div className="h-64 w-full relative overflow-hidden">
+                  <img
+                    src={store.image}
+                    alt={store.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                </div>
 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end pb-[60px]">
-                  <div className="mb-3">
-                    <h2 className="text-xl font-semibold text-white">
-                      {store.name}
-                    </h2>
-                    <p className="text-gray-200 text-sm">
-                      {store.location}
-                    </p>
+                {/* Content container */}
+                <div className="bg-white p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-semibold text-[#5e3023] mb-2">{store.name}</h3>
+                  <p className="text-[#8c5f53] mb-4">{store.location}</p>
+                  <div className="mt-auto">
+                    <button
+                      className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-3 rounded-md font-medium transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/store/${store.id}`, { state: store });
+                      }}
+                    >
+                      View Store
+                    </button>
                   </div>
-
-                  <button
-                    className="bg-[#d3756b] hover:bg-[#c25d52] text-white py-[20px] w-full transition-colors cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/store/${store.id}`, { state: store });
-                    }}
-                  >
-                    View Store
-                  </button>
                 </div>
               </div>
             ))}
