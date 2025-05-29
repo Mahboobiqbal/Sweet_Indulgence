@@ -1,117 +1,90 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import mockStores from "../data/mockStores";
 
 const HomePage = () => {
   const [stores, setStores] = useState([]);
+  const navigate = useNavigate();
+  const [showVideo, setShowVideo] = useState(true);
 
   useEffect(() => {
-    // Simulating fetching data from a database (Firebase would be used here)
-    const mockStores = [
-      {
-        id: 1,
-        name: "Delicious Cakes Bakery",
-        location: "Mingora, Pakistan",
-        menu: ["Chocolate Cake", "Cupcakes", "Macarons"],
-        image:
-          "https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?q=80&w=1452&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      },
-      {
-        id: 2,
-        name: "Sweet Treats Hub",
-        location: "Islamabad, Pakistan",
-        menu: ["Cheesecake", "Brownies", "Fruit Tart"],
-        image:
-          "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 3,
-        name: "Royal Bakers",
-        location: "Karachi, Pakistan",
-        menu: ["Black Forest Cake", "Donuts", "Eclairs"],
-        image:
-          "https://images.unsplash.com/photo-1624006229221-2abd931f266b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 4,
-        name: "Golden Oven",
-        location: "Lahore, Pakistan",
-        menu: ["Butter Cookies", "Cinnamon Rolls", "Pecan Pie"],
-        image:
-          "https://images.unsplash.com/photo-1586985289906-406988974504?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 5,
-        name: "The Sweet Corner",
-        location: "Rawalpindi, Pakistan",
-        menu: ["Vanilla Cake", "Fruit Pie", "Muffins"],
-        image:
-          "https://images.unsplash.com/photo-1610670444950-0b29430891b4?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 6,
-        name: "Fluffy Bakes",
-        location: "Peshawar, Pakistan",
-        menu: ["Sponge Cake", "Swiss Rolls", "Choco Lava Cake"],
-        image:
-          "https://images.unsplash.com/photo-1595272568891-123402d0fb3b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 7,
-        name: "Sugar Rush Café",
-        location: "Quetta, Pakistan",
-        menu: ["Strawberry Shortcake", "Choco Chip Cookies", "Tiramisu"],
-        image:
-          "https://images.unsplash.com/photo-1559553156-2e97137af16f?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjR8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 8,
-        name: "Creamy Delights",
-        location: "Faisalabad, Pakistan",
-        menu: ["Red Velvet Cake", "Pastries", "Baklava"],
-        image:
-          "https://images.unsplash.com/photo-1604413191066-4dd20bedf486?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjd8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 9,
-        name: "Sweet Symphony",
-        location: "Hyderabad, Pakistan",
-        menu: ["Fudge Brownies", "Caramel Tart", "Ice Cream Cake"],
-        image:
-          "https://images.unsplash.com/photo-1568827999250-3f6afff96e66?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzR8fGJpcnRoZGF5JTIwY2FrZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 10,
-        name: "Heavenly Bakes",
-        location: "Multan, Pakistan",
-        menu: ["Lemon Cake", "Mocha Cupcakes", "Pineapple Upside-down Cake"],
-        image:
-          "https://images.unsplash.com/photo-1577998474517-7eeeed4e448a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGJpcnRoZGF5fGVufDB8fDB8fHww",
-      },
-    ];
     setStores(mockStores);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <video
-        className="w-full h-auto mb-6 rounded-lg shadow-lg"
-        src="/video/HeroVideo.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
-      >
-        Your browser does not support the video tag.
-      </video>
+    <div className="min-h-screen bg-[#fff9f5] p-6">
+      {/* Hero section */}
+      {showVideo ? (
+        <div className="relative mb-12">
+          <video
+            className="w-full h-auto rounded-lg shadow-lg"
+            src="/video/HeroVideo.mp4"
+            autoPlay={true}
+            muted={true}
+            loop={true}
+            playsInline={true}
+            controls={false}
+            preload="auto"
+            onError={(e) => console.error("Video error:", e)}
+          >
+            Your browser does not support the video tag.
+          </video>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center bg-black/30 p-8 rounded-lg backdrop-blur-sm max-w-3xl">
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                Welcome to Sweet Indulgence
+              </h1>
+              <p className="text-xl text-white mb-6">
+                Crafting sweet memories, one cake at a time
+              </p>
+              <button
+                className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-3 rounded-full font-bold transition-all duration-300 transform hover:scale-105"
+                onClick={() => navigate("/about")}
+              >
+                Discover Our Story
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full h-96 mb-12 rounded-lg shadow-lg bg-[#f8e8e0] flex items-center justify-center">
+          <div className="text-center p-8">
+            <h1 className="text-4xl font-bold text-[#5e3023] mb-4">
+              Welcome to Sweet Indulgence
+            </h1>
+            <p className="text-xl text-[#8c5f53] mb-6">
+              Crafting sweet memories, one cake at a time
+            </p>
+            <button
+              className="ml-4 bg-[#d3756b] text-white px-4 py-2 rounded-full"
+              onClick={() => setShowVideo(true)}
+            >
+              Enable Video
+            </button>
+          </div>
+        </div>
+      )}
 
-      <div className="text-center max-w-4xl mx-auto my-12 px-4">
-        <div className="flex items-center justify-center mb-6">
-          <div className="flex-grow border-t border-gray-300 mr-4"></div>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-800 uppercase">
+      {/* Dev toggle button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          className="bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-sm"
+          onClick={() => setShowVideo(!showVideo)}
+        >
+          {showVideo ? "Disable Video (Dev Mode)" : "Enable Video"}
+        </button>
+      </div>
+
+      {/* About section */}
+      <div className="text-center max-w-4xl mx-auto my-16 px-4">
+        <div className="flex items-center justify-center mb-8">
+          <div className="flex-grow border-t border-[#e7dcca] mr-4"></div>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#5e3023] uppercase">
             Smiles Guaranteed
           </h2>
-          <div className="flex-grow border-t border-gray-300 ml-4"></div>
+          <div className="flex-grow border-t border-[#e7dcca] ml-4"></div>
         </div>
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-[#8c5f53] leading-relaxed text-lg">
           The Bake House Inc is the official smiles provider in Swat. We sell
           the best cakes in Swat. Our cakes are handcrafted with the finest
           ingredients, attention, and pure love. Our customized cakes are the
@@ -120,49 +93,66 @@ const HomePage = () => {
           look beautiful but also taste amazing. For the best customized cake
           delivery, order at the Baketown.
           <br />
+          <br />
           Our major products are customized cakes, regular cakes, fresh tea
           cakes, brownies, fresh cookies, hot pies, cheesecakes, and gift
           baskets. Our tea-time desserts like fudge brownies, cookies, tarts,
           and pies are the talk of the town, and they reach you fresh and warm
-          whenever you order them, as we bake fresh desserts and don’t sell
+          whenever you order them, as we bake fresh desserts and don't sell
           pre-baked ones.
+          <br />
           <br />
           Our gift platters and gift baskets are the best way to send good
           wishes to your loved ones and cheer them up. We have gift baskets
           available for Eid, New Year, birthday, and wedding celebrations. Give
-          us a try, and you won’t be disappointed that’s a guarantee.
+          us a try, and you won't be disappointed that's a guarantee.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {stores.map((store) => (
-          <div
-            key={store.id}
-            className="bg-white p-4 shadow-md rounded-lg text-center"
-          >
-            <img
-              src={store.image}
-              alt={store.name}
-              className="w-full h-40 object-cover rounded-md mb-4"
-            />
-            <h2 className="text-xl font-semibold text-pink-500">
-              {store.name}
-            </h2>
-            <p className="text-gray-600">{store.location}</p>
-            <h3 className="text-lg font-bold mt-2">Menu:</h3>
-            <ul className="list-disc list-inside text-gray-700">
-              {store.menu.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-            <button
-              className="mt-4 bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600"
-              onClick={() => navigate(`/store/${store.id}`, { state: store })} // Navigate with store data
-            >
-              View Store
-            </button>
+      {/* Featured stores section */}
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-[#5e3023] mb-2">Our Stores</h2>
+        <p className="text-[#8c5f53] mb-10">
+          Discover our bakeries across Pakistan
+        </p>
+
+        <div className="flex justify-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-10 mx-auto">
+            {stores.map((store) => (
+              <div
+                key={store.id}
+                className="relative w-120 h-120 rounded-lg overflow-hidden group shadow-lg mx-auto hover:shadow-xl transition-all duration-300"
+                onClick={() => navigate(`/store/${store.id}`, { state: store })}
+              >
+                {/* Image */}
+                <img
+                  src={store.image}
+                  alt={store.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end pb-[60px]">
+                  <div className="mb-3">
+                    <h2 className="text-xl font-semibold text-white">
+                      {store.name}
+                    </h2>
+                    <p className="text-gray-200 text-sm">
+                      {store.location}
+                    </p>
+                  </div>
+
+                  <button
+                    className="bg-[#d3756b] hover:bg-[#c25d52] text-white py-[20px] w-full transition-colors cursor-pointer"
+                    onClick={() => navigate(`/store/${store.id}`, { state: store })}
+                  >
+                    View Store
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
