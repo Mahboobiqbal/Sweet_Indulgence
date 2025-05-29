@@ -1,20 +1,25 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { authService } from "../services/api";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const SignUpPage = () => {
   const [role, setRole] = useState("customer");
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
     confirmPassword: "",
     agreeTerms: false,
     // Supplier specific fields
-    businessName: "",
-    businessAddress: "",
-    phoneNumber: "",
+    business_name: "",
+    business_address: "",
+    business_phone: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -23,26 +28,97 @@ const SignUpPage = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    
+    // Clear error when field is changed
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
-  const handleSignUp = (e) => {
-    e.preventDefault();
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validate common fields
+    if (!formData.first_name.trim()) newErrors.first_name = "First name is required";
+    if (!formData.last_name.trim()) newErrors.last_name = "Last name is required";
+    if (!formData.email.trim()) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
+    
+    if (!formData.password) newErrors.password = "Password is required";
+    else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
+    
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match");
+      newErrors.confirmPassword = "Passwords don't match";
+    }
+    
+    if (!formData.agreeTerms) newErrors.agreeTerms = "You must agree to the terms";
+    
+    // Validate supplier fields
+    if (role === "supplier") {
+      if (!formData.business_name.trim()) newErrors.business_name = "Business name is required";
+      if (!formData.business_address.trim()) newErrors.business_address = "Business address is required";
+      if (!formData.business_phone.trim()) newErrors.business_phone = "Phone number is required";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error("Please fix the errors in the form");
       return;
     }
-    console.log("Sign up submitted:", formData);
-    // Add your registration logic here
-
-    if (role === "supplier") {
-      navigate("/create-store"); // Redirect to store creation page
-    } else {
-      navigate("/home"); // Redirect customer to homepage
+    
+    setIsLoading(true);
+    
+    try {
+      // Prepare data for API
+      const userData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        password: formData.password,
+      };
+      
+      // Add supplier fields if registering as supplier
+      if (role === "supplier") {
+        userData.business_name = formData.business_name;
+        userData.business_address = formData.business_address;
+        userData.business_phone = formData.business_phone;
+      }
+      
+      // Call appropriate API endpoint based on role
+      let response;
+      if (role === "supplier") {
+        response = await authService.registerSupplier(userData);
+      } else {
+        response = await authService.registerCustomer(userData);
+      }
+      
+      toast.success("Registration successful!");
+      
+      // Navigate to the appropriate page
+      if (role === "supplier") {
+        navigate("/create-store");
+      } else {
+        navigate("/");
+      }
+      
+    } catch (error) {
+      console.error("Registration error:", error);
+      const errorMessage = error.message || "Registration failed. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#fff9f5] py-16 px-4">
+      <ToastContainer position="top-right" />
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div className="bg-[#e7dcca] p-6 text-center">
           <h2 className="text-3xl font-bold text-[#5e3023]">
@@ -84,39 +160,47 @@ const SignUpPage = () => {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
               <label
-                htmlFor="firstName"
+                htmlFor="first_name"
                 className="block text-[#5e3023] font-medium mb-2"
               >
                 First Name
               </label>
               <input
                 type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
+                id="first_name"
+                name="first_name"
+                value={formData.first_name}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+                className={`w-full px-4 py-3 rounded-full border ${
+                  errors.first_name ? 'border-red-500' : 'border-[#e7dcca]'
+                } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
                 placeholder="First Name"
-                required
               />
+              {errors.first_name && (
+                <p className="text-red-500 text-sm mt-1">{errors.first_name}</p>
+              )}
             </div>
             <div>
               <label
-                htmlFor="lastName"
+                htmlFor="last_name"
                 className="block text-[#5e3023] font-medium mb-2"
               >
                 Last Name
               </label>
               <input
                 type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
+                id="last_name"
+                name="last_name"
+                value={formData.last_name}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+                className={`w-full px-4 py-3 rounded-full border ${
+                  errors.last_name ? 'border-red-500' : 'border-[#e7dcca]'
+                } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
                 placeholder="Last Name"
-                required
               />
+              {errors.last_name && (
+                <p className="text-red-500 text-sm mt-1">{errors.last_name}</p>
+              )}
             </div>
           </div>
 
@@ -124,59 +208,71 @@ const SignUpPage = () => {
             <>
               <div className="mb-6">
                 <label
-                  htmlFor="businessName"
+                  htmlFor="business_name"
                   className="block text-[#5e3023] font-medium mb-2"
                 >
                   Business Name
                 </label>
                 <input
                   type="text"
-                  id="businessName"
-                  name="businessName"
-                  value={formData.businessName}
+                  id="business_name"
+                  name="business_name"
+                  value={formData.business_name}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+                  className={`w-full px-4 py-3 rounded-full border ${
+                    errors.business_name ? 'border-red-500' : 'border-[#e7dcca]'
+                  } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
                   placeholder="Your bakery name"
-                  required={role === "supplier"}
                 />
+                {errors.business_name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.business_name}</p>
+                )}
               </div>
 
               <div className="mb-6">
                 <label
-                  htmlFor="businessAddress"
+                  htmlFor="business_address"
                   className="block text-[#5e3023] font-medium mb-2"
                 >
                   Business Address
                 </label>
                 <input
                   type="text"
-                  id="businessAddress"
-                  name="businessAddress"
-                  value={formData.businessAddress}
+                  id="business_address"
+                  name="business_address"
+                  value={formData.business_address}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+                  className={`w-full px-4 py-3 rounded-full border ${
+                    errors.business_address ? 'border-red-500' : 'border-[#e7dcca]'
+                  } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
                   placeholder="Your business address"
-                  required={role === "supplier"}
                 />
+                {errors.business_address && (
+                  <p className="text-red-500 text-sm mt-1">{errors.business_address}</p>
+                )}
               </div>
 
               <div className="mb-6">
                 <label
-                  htmlFor="phoneNumber"
+                  htmlFor="business_phone"
                   className="block text-[#5e3023] font-medium mb-2"
                 >
                   Phone Number
                 </label>
                 <input
                   type="tel"
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
+                  id="business_phone"
+                  name="business_phone"
+                  value={formData.business_phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+                  className={`w-full px-4 py-3 rounded-full border ${
+                    errors.business_phone ? 'border-red-500' : 'border-[#e7dcca]'
+                  } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
                   placeholder="Your contact number"
-                  required={role === "supplier"}
                 />
+                {errors.business_phone && (
+                  <p className="text-red-500 text-sm mt-1">{errors.business_phone}</p>
+                )}
               </div>
             </>
           )}
@@ -194,10 +290,14 @@ const SignUpPage = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+              className={`w-full px-4 py-3 rounded-full border ${
+                errors.email ? 'border-red-500' : 'border-[#e7dcca]'
+              } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
               placeholder="Enter your email"
-              required
             />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -213,10 +313,14 @@ const SignUpPage = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+              className={`w-full px-4 py-3 rounded-full border ${
+                errors.password ? 'border-red-500' : 'border-[#e7dcca]'
+              } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
               placeholder="Create a password"
-              required
             />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -232,10 +336,14 @@ const SignUpPage = () => {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+              className={`w-full px-4 py-3 rounded-full border ${
+                errors.confirmPassword ? 'border-red-500' : 'border-[#e7dcca]'
+              } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
               placeholder="Confirm your password"
-              required
             />
+            {errors.confirmPassword && (
+              <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+            )}
           </div>
 
           <div className="flex items-center mb-6">
@@ -245,12 +353,13 @@ const SignUpPage = () => {
               name="agreeTerms"
               checked={formData.agreeTerms}
               onChange={handleChange}
-              className="h-4 w-4 text-[#d3756b] focus:ring-[#d3756b] border-[#e7dcca] rounded"
-              required
+              className={`h-4 w-4 text-[#d3756b] focus:ring-[#d3756b] border-[#e7dcca] rounded ${
+                errors.agreeTerms ? 'border-red-500' : ''
+              }`}
             />
             <label
               htmlFor="agreeTerms"
-              className="ml-2 text-[#8c5f53]"
+              className={`ml-2 ${errors.agreeTerms ? 'text-red-500' : 'text-[#8c5f53]'}`}
             >
               I agree to the{" "}
               <a
@@ -264,9 +373,22 @@ const SignUpPage = () => {
 
           <button
             type="submit"
-            className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-3 rounded-full font-bold transition-all duration-300 transform hover:scale-105"
+            disabled={isLoading}
+            className={`w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-3 rounded-full font-bold transition-all duration-300 transform hover:scale-105 ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
           >
-            {role === "supplier" ? "CREATE SUPPLIER ACCOUNT" : "SIGN UP"}
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+              </span>
+            ) : (
+              role === "supplier" ? "CREATE SUPPLIER ACCOUNT" : "SIGN UP"
+            )}
           </button>
 
           <div className="text-center mt-8 text-[#8c5f53]">

@@ -1,1 +1,37 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles can go below this line */
+:root {
+  --color-primary: #d3756b;
+  --color-primary-dark: #c25d52;
+  --color-secondary: #e7dcca;
+  --color-secondary-dark: #d3c2a8;
+  --color-text-dark: #5e3023;
+  --color-text-medium: #8c5f53;
+  --color-background: #fff9f5;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text-dark);
+}
+
+/* Add more custom styles as needed */
+
+/* You can also create custom utility classes like this: */
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded-full bg-[#d3756b] text-white hover:bg-[#c25d52] transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 rounded-full bg-[#e7dcca] text-[#5e3023] hover:bg-[#d3c2a8] transition-colors;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+}
