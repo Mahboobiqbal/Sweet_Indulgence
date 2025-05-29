@@ -92,12 +92,47 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <h1 className="text-3xl font-bold text-center text-pink-600 mb-6">
-        Welcome to Sweet Indulgence
-      </h1>
-      <p className="text-gray-700 text-center mb-8">
-        Explore the best bakeries and sweet treats for your special occasions!
-      </p>
+      <video
+        className="w-full h-auto mb-6 rounded-lg shadow-lg"
+        src="/video/HeroVideo.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+      >
+        Your browser does not support the video tag.
+      </video>
+
+      <div className="text-center max-w-4xl mx-auto my-12 px-4">
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex-grow border-t border-gray-300 mr-4"></div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 uppercase">
+            Smiles Guaranteed
+          </h2>
+          <div className="flex-grow border-t border-gray-300 ml-4"></div>
+        </div>
+        <p className="text-gray-600 leading-relaxed">
+          The Bake House Inc is the official smiles provider in Swat. We sell
+          the best cakes in Swat. Our cakes are handcrafted with the finest
+          ingredients, attention, and pure love. Our customized cakes are the
+          best in Swat and are a showstopper at every party. Our wedding cakes,
+          birthday cakes, anniversary cakes, and picture-printed cakes not only
+          look beautiful but also taste amazing. For the best customized cake
+          delivery, order at the Baketown.
+          <br />
+          Our major products are customized cakes, regular cakes, fresh tea
+          cakes, brownies, fresh cookies, hot pies, cheesecakes, and gift
+          baskets. Our tea-time desserts like fudge brownies, cookies, tarts,
+          and pies are the talk of the town, and they reach you fresh and warm
+          whenever you order them, as we bake fresh desserts and don’t sell
+          pre-baked ones.
+          <br />
+          Our gift platters and gift baskets are the best way to send good
+          wishes to your loved ones and cheer them up. We have gift baskets
+          available for Eid, New Year, birthday, and wedding celebrations. Give
+          us a try, and you won’t be disappointed that’s a guarantee.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {stores.map((store) => (
