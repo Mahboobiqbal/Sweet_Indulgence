@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-
+import SupplierDashboard from './SupplierDashboard';
 const Dashboard = () => {
   const { currentUser, isAuthenticated } = useAuth();
   
@@ -70,69 +70,69 @@ const CustomerDashboard = ({ user }) => {
   );
 };
 
-// Supplier dashboard component
-const SupplierDashboard = ({ user }) => {
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-[#5e3023] mb-2">Supplier Dashboard</h1>
-        <p className="text-[#8c5f53] mb-6">
-          Welcome back, {user.business_name || `${user.first_name} ${user.last_name}`}!
-        </p>
+// // Supplier dashboard component
+// const SupplierDashboard = ({ user }) => {
+//   return (
+//     <div className="container mx-auto py-8 px-4">
+//       <div className="bg-white rounded-lg shadow-md p-6">
+//         <h1 className="text-2xl font-bold text-[#5e3023] mb-2">Supplier Dashboard</h1>
+//         <p className="text-[#8c5f53] mb-6">
+//           Welcome back, {user.business_name || `${user.first_name} ${user.last_name}`}!
+//         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Store Status Card */}
-          <div className="bg-[#fff9f5] p-5 rounded-lg border border-[#e7dcca]">
-            <h2 className="text-xl font-semibold text-[#5e3023] mb-3">Store Status</h2>
-            <p className="text-[#8c5f53] mb-2">
-              Verification: 
-              <span className={`font-bold ml-2 ${user.is_verified ? 'text-green-600' : 'text-amber-600'}`}>
-                {user.is_verified ? 'Verified' : 'Pending'}
-              </span>
-            </p>
-            <button className="mt-3 text-[#d3756b] hover:text-[#c25d52] font-medium">
-              Manage store →
-            </button>
-          </div>
+//         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+//           {/* Store Status Card */}
+//           <div className="bg-[#fff9f5] p-5 rounded-lg border border-[#e7dcca]">
+//             <h2 className="text-xl font-semibold text-[#5e3023] mb-3">Store Status</h2>
+//             <p className="text-[#8c5f53] mb-2">
+//               Verification: 
+//               <span className={`font-bold ml-2 ${user.is_verified ? 'text-green-600' : 'text-amber-600'}`}>
+//                 {user.is_verified ? 'Verified' : 'Pending'}
+//               </span>
+//             </p>
+//             <button className="mt-3 text-[#d3756b] hover:text-[#c25d52] font-medium">
+//               Manage store →
+//             </button>
+//           </div>
           
-          {/* Orders Card */}
-          <div className="bg-[#fff9f5] p-5 rounded-lg border border-[#e7dcca]">
-            <h2 className="text-xl font-semibold text-[#5e3023] mb-3">Orders</h2>
-            <p className="text-[#8c5f53] mb-2">New orders: <span className="font-bold">0</span></p>
-            <p className="text-[#8c5f53] mb-4">Processing: <span className="font-bold">0</span></p>
-            <button className="text-[#d3756b] hover:text-[#c25d52] font-medium">
-              Manage orders →
-            </button>
-          </div>
+//           {/* Orders Card */}
+//           <div className="bg-[#fff9f5] p-5 rounded-lg border border-[#e7dcca]">
+//             <h2 className="text-xl font-semibold text-[#5e3023] mb-3">Orders</h2>
+//             <p className="text-[#8c5f53] mb-2">New orders: <span className="font-bold">0</span></p>
+//             <p className="text-[#8c5f53] mb-4">Processing: <span className="font-bold">0</span></p>
+//             <button className="text-[#d3756b] hover:text-[#c25d52] font-medium">
+//               Manage orders →
+//             </button>
+//           </div>
           
-          {/* Products Card */}
-          <div className="bg-[#fff9f5] p-5 rounded-lg border border-[#e7dcca]">
-            <h2 className="text-xl font-semibold text-[#5e3023] mb-3">Products</h2>
-            <p className="text-[#8c5f53] mb-4">Total products: <span className="font-bold">0</span></p>
-            <button className="text-[#d3756b] hover:text-[#c25d52] font-medium">
-              Manage products →
-            </button>
-          </div>
-        </div>
+//           {/* Products Card */}
+//           <div className="bg-[#fff9f5] p-5 rounded-lg border border-[#e7dcca]">
+//             <h2 className="text-xl font-semibold text-[#5e3023] mb-3">Products</h2>
+//             <p className="text-[#8c5f53] mb-4">Total products: <span className="font-bold">0</span></p>
+//             <button className="text-[#d3756b] hover:text-[#c25d52] font-medium">
+//               Manage products →
+//             </button>
+//           </div>
+//         </div>
         
-        {/* Quick Actions Section */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-[#5e3023] mb-4">Quick Actions</h2>
-          <div className="flex flex-wrap gap-4">
-            <button className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-4 py-2 rounded-full transition-all duration-300">
-              Add New Product
-            </button>
-            <button className="bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] px-4 py-2 rounded-full transition-all duration-300">
-              Update Store Hours
-            </button>
-            <button className="bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] px-4 py-2 rounded-full transition-all duration-300">
-              View Analytics
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+//         {/* Quick Actions Section */}
+//         <div className="mt-8">
+//           <h2 className="text-xl font-semibold text-[#5e3023] mb-4">Quick Actions</h2>
+//           <div className="flex flex-wrap gap-4">
+//             <button className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-4 py-2 rounded-full transition-all duration-300">
+//               Add New Product
+//             </button>
+//             <button className="bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] px-4 py-2 rounded-full transition-all duration-300">
+//               Update Store Hours
+//             </button>
+//             <button className="bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] px-4 py-2 rounded-full transition-all duration-300">
+//               View Analytics
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
 export default Dashboard;

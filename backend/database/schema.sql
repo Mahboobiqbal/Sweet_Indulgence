@@ -186,3 +186,17 @@ CREATE TABLE wishlist_items (
     FOREIGN KEY (wishlist_id) REFERENCES wishlist(wishlist_id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
 );
+
+
+INSERT INTO categories (category_id, name, description) VALUES 
+('cat1', 'Cakes', 'Traditional and custom cakes'),
+('cat2', 'Cupcakes', 'Individual portion cakes'),
+('cat3', 'Pastries', 'Flaky and sweet pastries'),
+('cat4', 'Cookies', 'Baked cookies and biscuits'),
+('cat5', 'Brownies', 'Chocolate brownies and bars'),
+('cat6', 'Tarts', 'Sweet and savory tarts'),
+('cat7', 'Pies', 'Traditional pies'),
+('cat8', 'Donuts', 'Fried and baked donuts'),
+('cat9', 'Breads', 'Sweet and savory breads'),
+('cat10', 'Custom Orders', 'Custom made products'),
+('cat11', 'Seasonal Specials', 'Seasonal and holiday items');

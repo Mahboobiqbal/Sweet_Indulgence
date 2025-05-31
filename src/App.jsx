@@ -14,7 +14,8 @@ import AboutPage from "./Components/About";
 import ContactPage from "./Components/Contact";
 import StoreDetailsPage from "./Components/Storedetailspage";
 import Footer from "./Components/Footer";
-import Dashboard from "./Components/Dashboard";
+import SupplierDashboard from "./Components/SupplierDashboard";
+import AddProduct from "./Components/AddProduct";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -48,6 +49,7 @@ const AppRoutes = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
 
+
         {/* Protected Routes */}
         <Route
           path="/create-store"
@@ -65,7 +67,22 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/add-product"
+          element={
+            <ProtectedRoute allowedRoles={["supplier", "admin"]}>
+              <AddProduct />
+           </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/supplier-dashboard"
+          element={
+            <ProtectedRoute>
+              <SupplierDashboard />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
       <Footer />
       <ToastContainer />
