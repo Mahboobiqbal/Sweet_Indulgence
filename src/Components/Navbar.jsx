@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import BakeHouse from "../assets/BakeHouse.png";
 // import logo from "../assets/logo.png"; // Make sure you have a logo asset
 
 const Navbar = () => {
@@ -40,23 +41,17 @@ const Navbar = () => {
   return (
     <nav
       className={`fixed w-full z-50 transition-all duration-300 ${
-        scrolled ? "bg-white shadow-md py-2" : "bg-transparent py-4"
+        scrolled
+          ? "bg-white text-[#5e3023]  shadow-md py-2"
+          : "bg-transprent py-4"
       }`}
     >
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <img
-              src={""}
-              alt="Sweet Indulgence"
-              className="h-10 w-auto"
-            />
-            <span className="ml-2 text-xl font-bold text-[#5e3023]">
-              Sweet Indulgence
-            </span>
+            <img src={BakeHouse} alt="Bake House Logo" className="h-20 w-20 " />
           </Link>
-
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
             <Link
@@ -211,7 +206,9 @@ const Navbar = () => {
                 </Link>
                 <div className="relative group">
                   <button className="flex items-center text-[#5e3023] hover:text-[#d3756b]">
-                    <span className="mr-1">{currentUser.business_name || currentUser.first_name}</span>
+                    <span className="mr-1">
+                      {currentUser.business_name || currentUser.first_name}
+                    </span>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4"
