@@ -17,6 +17,7 @@ import Footer from "./Components/Footer";
 import SupplierDashboard from "./Components/SupplierDashboard";
 import AddProduct from "./Components/AddProduct";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProductsPage from "./Components/ProductsPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -73,6 +74,14 @@ const AppRoutes = () => {
             <ProtectedRoute allowedRoles={["supplier", "admin"]}>
               <AddProduct />
            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manage-products"
+          element={
+            <ProtectedRoute>
+              <ProductsPage />
+            </ProtectedRoute>
           }
         />
         <Route

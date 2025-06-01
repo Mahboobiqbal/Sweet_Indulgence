@@ -15,6 +15,7 @@ from routes.cart import cart_bp
 from routes.wishlist import wishlist_bp
 from routes.reviews import reviews_bp
 from routes.loyalty import loyalty_bp
+from routes.categories import categories_bp
 
 def create_app():
     app = Flask(__name__)
@@ -61,7 +62,7 @@ def create_app():
             'success': False,
             'message': 'Invalid token'
         }), 401
-    
+
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         return jsonify({
@@ -72,13 +73,14 @@ def create_app():
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
-    app.register_blueprint(stores_bp, url_prefix='/api/stores')
+    app.register_blueprint(stores_bp, url_prefix='/api')
     app.register_blueprint(products_bp, url_prefix='/api')  # Changed this
     app.register_blueprint(orders_bp, url_prefix='/api/orders')
     app.register_blueprint(cart_bp, url_prefix='/api/cart')
     app.register_blueprint(wishlist_bp, url_prefix='/api/wishlist')
     app.register_blueprint(reviews_bp, url_prefix='/api/reviews')
     app.register_blueprint(loyalty_bp, url_prefix='/api/loyalty')
+    app.register_blueprint(categories_bp, url_prefix='/api')
     
     # Error handlers
     @app.errorhandler(404)

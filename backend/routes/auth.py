@@ -4,6 +4,7 @@ from utils.auth import check_password, hash_password
 from models.user import User
 from models.supplier import Supplier
 import uuid
+from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -128,6 +129,27 @@ def register_supplier():
             }
             
             supplier_id = Supplier.create(supplier_data)
+            
+            # After creating the user account with role='supplier'
+            if user_data['role'] == 'supplier':
+                # Create a default store for the supplier
+                store_id = str(uuid.uuid4())
+                store_name = f"{data['first_name']}'s Bakery"  # Default name
+                
+                with db.cursor() as cursor:
+                    sql = """
+                        INSERT INTO stores (
+                            store_id, owner_id, name, description, is_active, date_created
+                        ) VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(sql, (
+                        store_id, 
+                        user_id, 
+                        store_name,
+                        "My bakery store", 
+                        True, 
+                        datetime.utcnow()
+                    ))
             
             # Commit transaction
             db.commit()

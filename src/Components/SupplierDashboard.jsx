@@ -1,9 +1,155 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+
+// Store creation component
+const CreateStore = () => {
+  const [isCreating, setIsCreating] = useState(false);
+  const [storeName, setStoreName] = useState("My Bakery Shop");
+  const [storeDescription, setStoreDescription] = useState("My bakery store");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [storeCity, setStoreCity] = useState("");
+  const [storePhone, setStorePhone] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  
+  const handleCreateStore = async () => {
+    try {
+      setIsCreating(true);
+      setError("");
+      
+      const response = await fetch('http://localhost:5000/api/stores', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: storeName,
+          description: storeDescription,
+          address: storeAddress,
+          city: storeCity,
+          phone: storePhone
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSuccess("Store created successfully! Refreshing...");
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setError(data.message || "Failed to create store");
+      }
+    } catch (err) {
+      setError("An error occurred while creating the store");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+  
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h1 className="text-2xl font-bold text-[#5e3023] mb-4">Create Your Store</h1>
+      <p className="text-[#8c5f53] mb-6">
+        You need to create a store before you can add products.
+      </p>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {success}
+        </div>
+      )}
+      
+      <div className="mb-4">
+        <label className="block text-[#5e3023] text-sm font-bold mb-2">
+          Store Name
+        </label>
+        <input
+          type="text"
+          className="border rounded w-full py-2 px-3 text-gray-700"
+          value={storeName}
+          onChange={(e) => setStoreName(e.target.value)}
+        />
+      </div>
+      
+      <div className="mb-4">
+        <label className="block text-[#5e3023] text-sm font-bold mb-2">
+          Description
+        </label>
+        <textarea
+          className="border rounded w-full py-2 px-3 text-gray-700"
+          value={storeDescription}
+          onChange={(e) => setStoreDescription(e.target.value)}
+          rows="3"
+        />
+      </div>
+      
+      <div className="mb-4">
+        <label className="block text-[#5e3023] text-sm font-bold mb-2">
+          Store Address
+        </label>
+        <input
+          type="text"
+          className="border rounded w-full py-2 px-3 text-gray-700"
+          value={storeAddress}
+          onChange={(e) => setStoreAddress(e.target.value)}
+          placeholder="123 Main St"
+        />
+      </div>
+      
+      <div className="mb-4">
+        <label className="block text-[#5e3023] text-sm font-bold mb-2">
+          City
+        </label>
+        <input
+          type="text"
+          className="border rounded w-full py-2 px-3 text-gray-700"
+          value={storeCity}
+          onChange={(e) => setStoreCity(e.target.value)}
+          placeholder="Your City"
+        />
+      </div>
+      
+      <div className="mb-4">
+        <label className="block text-[#5e3023] text-sm font-bold mb-2">
+          Phone
+        </label>
+        <input
+          type="text"
+          className="border rounded w-full py-2 px-3 text-gray-700"
+          value={storePhone}
+          onChange={(e) => setStorePhone(e.target.value)}
+          placeholder="555-123-4567"
+        />
+      </div>
+      
+      <button
+        onClick={handleCreateStore}
+        disabled={isCreating}
+        className="bg-[#d3756b] hover:bg-[#c25d52] text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+      >
+        {isCreating ? "Creating..." : "Create Store"}
+      </button>
+    </div>
+  );
+};
 
 // Supplier dashboard component
 const SupplierDashboard = () => {
     const { currentUser, isAuthenticated } = useAuth();
+    const [hasStore, setHasStore] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [productStats, setProductStats] = useState({
+      total_products: 0,
+      featured_products: 0,
+      out_of_stock: 0
+    });
     
     // Show loading if not authenticated or user data not loaded
     if (!isAuthenticated || !currentUser) {
@@ -17,10 +163,83 @@ const SupplierDashboard = () => {
         );
     }
 
+    useEffect(() => {
+      // Check if user has a store
+      const checkStore = async () => {
+        try {
+          setIsLoading(true);
+          
+          const response = await fetch('http://localhost:5000/api/stores/check', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          
+          if (!response.ok) {
+            console.error("Store check error status:", response.status);
+            const errorData = await response.json();
+            console.error("Error data:", errorData);
+            setHasStore(false); // Default to no store on error
+            return;
+          }
+          
+          const data = await response.json();
+          console.log("Store check response:", data);
+          setHasStore(data.hasStore);
+          
+        } catch (err) {
+          console.error("Error checking store:", err);
+          setHasStore(false); // Default to no store on error
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      checkStore();
+    }, []);
+
+    useEffect(() => {
+      const fetchProductStats = async () => {
+        try {
+          const response = await fetch('http://localhost:5000/api/products/stats', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          
+          if (!response.ok) {
+            console.error("Failed to fetch product stats:", response.status);
+            return; // Keep default stats if request fails
+          }
+          
+          const data = await response.json();
+          if (data.success) {
+            setProductStats(data.stats);
+          }
+        } catch (err) {
+          console.error("Error fetching product stats:", err);
+          // Keep default stats values if there's an error
+        }
+      };
+      
+      if (hasStore) {
+        fetchProductStats();
+      }
+    }, [hasStore]);
+
     const handleAddProduct = () => {
         // Logic to handle adding a new product
         // navigate to AddProduct page
         window.location.href = '/add-product';
+    }
+
+    // In your render logic:
+    if (isLoading) {
+      return <div>Loading...</div>;
+    }
+
+    if (!hasStore) {
+      return <CreateStore />;
     }
 
     return (
@@ -122,7 +341,15 @@ const SupplierDashboard = () => {
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <span className="text-[#8c5f53]">Total products:</span>
-                                <span className="text-2xl font-bold text-[#5e3023]">0</span>
+                                <span className="text-2xl font-bold text-[#5e3023]">{productStats.total_products}</span>
+                            </div>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-[#8c5f53]">Featured:</span>
+                              <span className="text-lg font-semibold text-[#d3756b]">{productStats.featured_products}</span>
+                            </div>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-[#8c5f53]">Out of stock:</span>
+                              <span className="text-lg font-semibold text-red-500">{productStats.out_of_stock}</span>
                             </div>
                             <div className="mt-4 w-full bg-[#f5e6d3] rounded-full h-2">
                                 <div className="bg-gradient-to-r from-[#d3756b] to-[#c25d52] h-2 rounded-full w-0"></div>

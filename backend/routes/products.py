@@ -197,7 +197,7 @@ def add_product():
             'message': 'An error occurred while adding the product'
         }), 500
 
-@products_bp.route('/products', methods=['GET'])  # Changed route
+@products_bp.route('/products', methods=['GET'])
 def get_products():
     """Get all products with filters"""
     try:
@@ -252,4 +252,89 @@ def get_products():
         return jsonify({
             'success': False,
             'message': 'An error occurred while fetching products'
+        }), 500
+
+@products_bp.route('/products/stats', methods=['GET'])
+@jwt_required()
+def get_product_stats():
+    """Get product statistics for a supplier"""
+    try:
+        user_id = get_jwt_identity()
+        
+        from database.db import get_cursor
+        
+        with get_cursor() as cursor:
+            # First check if user is a supplier
+            sql = "SELECT role FROM users WHERE user_id = %s"
+            cursor.execute(sql, (user_id,))
+            user = cursor.fetchone()
+            
+            if not user:
+                return jsonify({
+                    'success': False,
+                    'message': 'User not found'
+                }), 404
+                
+            # Safe access for both tuple and dict results
+            user_role = user[0] if isinstance(user, tuple) else user.get('role')
+            
+            if user_role != 'supplier':
+                return jsonify({
+                    'success': False,
+                    'message': 'Not a supplier account'
+                }), 403
+                
+            # Get supplier's store
+            sql = "SELECT store_id FROM stores WHERE owner_id = %s"
+            cursor.execute(sql, (user_id,))
+            store = cursor.fetchone()
+            
+            if not store:
+                return jsonify({
+                    'success': False,
+                    'message': 'No store found'
+                }), 404
+                
+            # Safe access for both tuple and dict results
+            store_id = store[0] if isinstance(store, tuple) else store.get('store_id')
+            
+            # Get product counts
+            sql = """
+                SELECT 
+                    COUNT(*) AS total_products,
+                    SUM(CASE WHEN is_featured = TRUE THEN 1 ELSE 0 END) AS featured_products,
+                    SUM(CASE WHEN stock_quantity = 0 THEN 1 ELSE 0 END) AS out_of_stock
+                FROM products 
+                WHERE store_id = %s
+            """
+            cursor.execute(sql, (store_id,))
+            stats = cursor.fetchone()
+            
+            # Handle dictionary-like result with column names
+            if hasattr(stats, 'get'):
+                response_data = {
+                    'total_products': stats.get('total_products') or 0,
+                    'featured_products': stats.get('featured_products') or 0,
+                    'out_of_stock': stats.get('out_of_stock') or 0
+                }
+            # Handle tuple result with positional indexes
+            else:
+                response_data = {
+                    'total_products': stats[0] if stats and len(stats) > 0 and stats[0] is not None else 0,
+                    'featured_products': stats[1] if stats and len(stats) > 1 and stats[1] is not None else 0,
+                    'out_of_stock': stats[2] if stats and len(stats) > 2 and stats[2] is not None else 0
+                }
+            
+            return jsonify({
+                'success': True,
+                'stats': response_data
+            }), 200
+            
+    except Exception as e:
+        import traceback
+        print(f"Error fetching product stats: {e}")
+        print(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'Error fetching product stats: {str(e)}'
         }), 500

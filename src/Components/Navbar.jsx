@@ -24,6 +24,17 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // // Add effect to navigate to dashboard when authenticated
+  // useEffect(() => {
+  //   if (isAuthenticated) {
+  //     if (currentUser?.role === "supplier") {
+  //       navigate("/supplier-dashboard");
+  //     } else if (currentUser?.role === "customer") {
+  //       navigate("/dashboard");
+  //     }
+  //   }
+  // }, [isAuthenticated, currentUser, navigate]);
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
