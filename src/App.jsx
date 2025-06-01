@@ -20,6 +20,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProductsPage from "./Components/ProductsPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ProfilePage from "./Components/profile";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -50,7 +51,6 @@ const AppRoutes = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
 
-
         {/* Protected Routes */}
         <Route
           path="/create-store"
@@ -60,20 +60,13 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <div>User Profile Coming Soon...</div>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route
           path="/add-product"
           element={
             <ProtectedRoute allowedRoles={["supplier", "admin"]}>
               <AddProduct />
-           </ProtectedRoute>
+            </ProtectedRoute>
           }
         />
         <Route
