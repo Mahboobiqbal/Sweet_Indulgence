@@ -18,9 +18,18 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProfile((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    const { name, value, files } = e.target;
+    if (name === "avatar" && files && files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setProfile((prev) => ({ ...prev, avatar: event.target.result }));
+      };
+      reader.readAsDataURL(files[0]);
+      setErrors((prev) => ({ ...prev, avatar: "" }));
+    } else {
+      setProfile((prev) => ({ ...prev, [name]: value }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleSave = () => {
@@ -40,9 +49,9 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8 ">
+    <div className="min-h-screen bg-gray-100 p-8">
       <ToastContainer />
-      <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mt-10 ">
+      <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mt-10">
         <div className="grid md:grid-cols-2 gap-6 p-8">
           {/* Profile Section */}
           <div>
@@ -54,14 +63,22 @@ const ProfilePage = () => {
                 className="w-24 h-24 rounded-full object-cover border-2 border-indigo-500"
               />
               {isEditing && (
-                <input
-                  type="text"
-                  name="avatar"
-                  value={profile.avatar}
-                  onChange={handleChange}
-                  className="border px-3 py-2 rounded w-full"
-                  placeholder="Avatar Image URL"
-                />
+                <div className="flex flex-col gap-2">
+                  <label className="bg-indigo-600 text-white px-4 py-2 rounded cursor-pointer font-semibold">
+                    Choose or Capture Photo
+                    <input
+                      type="file"
+                      name="avatar"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleChange}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-sm text-gray-500">
+                    Select from gallery or use camera
+                  </p>
+                </div>
               )}
             </div>
             <div className="mb-4">
@@ -181,7 +198,7 @@ const ProfilePage = () => {
                     setIsEditing(false);
                     setErrors({});
                   }}
-                  className="px-6 py-2 bg-gray-300 hover:bg-gray-400 rounded font-semibold"
+                  className="px-6 py-2 bg-gray-300 hover:bg-gray- rounded font-semibold"
                 >
                   Cancel
                 </button>

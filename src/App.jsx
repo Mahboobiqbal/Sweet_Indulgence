@@ -21,6 +21,8 @@ import ProductsPage from "./Components/ProductsPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ProfilePage from "./Components/profile";
+import StoreSettingsPage from "./Components/storeSettingPage";
+import OrdersPage from "./Components/OrdersPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -50,6 +52,8 @@ const AppRoutes = () => {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
+        <Route path="store-settings" element={<StoreSettingsPage />} />
+        <Route path="manage-orders" element={<OrdersPage />} />
 
         {/* Protected Routes */}
         <Route
