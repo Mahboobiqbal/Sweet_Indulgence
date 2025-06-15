@@ -40,9 +40,9 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-100 p-8 ">
       <ToastContainer />
-      <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+      <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mt-10 ">
         <div className="grid md:grid-cols-2 gap-6 p-8">
           {/* Profile Section */}
           <div>
