@@ -52,6 +52,7 @@ const AppRoutes = () => {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
+        {/* Da 2wa routes me wrkroooo */}
         <Route path="store-settings" element={<StoreSettingsPage />} />
         <Route path="manage-orders" element={<OrdersPage />} />
 

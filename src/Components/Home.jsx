@@ -173,14 +173,12 @@ const HomePage = () => {
           look beautiful but also taste amazing. For the best customized cake
           delivery, order at the Baketown.
           <br />
-          <br />
           Our major products are customized cakes, regular cakes, fresh tea
           cakes, brownies, fresh cookies, hot pies, cheesecakes, and gift
           baskets. Our tea-time desserts like fudge brownies, cookies, tarts,
           and pies are the talk of the town, and they reach you fresh and warm
           whenever you order them, as we bake fresh desserts and don't sell
           pre-baked ones.
-          <br />
           <br />
           Our gift platters and gift baskets are the best way to send good
           wishes to your loved ones and cheer them up. We have gift baskets
