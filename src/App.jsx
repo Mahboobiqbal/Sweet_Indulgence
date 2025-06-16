@@ -5,7 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import HomePage from "./Components/Home";
+import Home from "./Components/Home";
 import Navbar from "./Components/Navbar";
 import LoginPage from "./Components/Login";
 import SignUpPage from "./Components/Signup";
@@ -23,6 +23,7 @@ import "react-toastify/dist/ReactToastify.css";
 import ProfilePage from "./Components/profile";
 import StoreSettingsPage from "./Components/storeSettingPage";
 import OrdersPage from "./Components/OrdersPage";
+import HomePage from "./Components/HomPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -46,15 +47,16 @@ const AppRoutes = () => {
       <Navbar />
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
 
-        <Route path="store-settings" element={<StoreSettingsPage />} />
-        <Route path="manage-orders" element={<OrdersPage />} />
+        <Route path="/store-settings" element={<StoreSettingsPage />} />
+        <Route path="/manage-orders" element={<OrdersPage />} />
 
         {/* Protected Routes */}
         <Route

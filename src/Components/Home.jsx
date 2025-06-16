@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import mockStores from "../data/mockStores";
 
-const HomePage = () => {
+const Home = () => {
   const [stores, setStores] = useState([]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showVideo, setShowVideo] = useState(true);
@@ -29,7 +29,7 @@ const HomePage = () => {
     <div className="min-h-screen bg-[#fff9f5]">
       {/* Hero section */}
       {showVideo ? (
-        <div className="relative mb-12 rounded-lg shadow-lg overflow-hidden">
+        <div className="relative mb-12 shadow-lg overflow-hidden">
           <video
             ref={videoRef}
             className="w-full h-auto"
@@ -93,7 +93,7 @@ const HomePage = () => {
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center bg-black/30 p-8 rounded-lg backdrop-blur-sm max-w-3xl">
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                Welcome to Sweet Indulgence
+                Welcome to Bake House
               </h1>
               <p className="text-xl text-white mb-6">
                 Crafting sweet memories, one cake at a time
@@ -360,4 +360,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+export default Home;

@@ -9,6 +9,7 @@ const ProductsPage = () => {
   const [categories, setCategories] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -28,6 +29,7 @@ const ProductsPage = () => {
         // Build query parameters
         const params = new URLSearchParams();
         params.append("page", currentPage);
+        params.append("limit", 12); // Set items per page
 
         if (filters.category) params.append("category_id", filters.category);
         if (filters.search) params.append("search", filters.search);
@@ -46,15 +48,21 @@ const ProductsPage = () => {
 
         params.append("sort", sortMapping[filters.sortBy] || "date_desc");
 
-        // Make API request
+        // Make API request - Fixed URL with trailing slash
         const response = await fetch(
           `http://localhost:5000/api/products?${params.toString()}`
         );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
 
         if (data.success) {
           setProducts(data.products || []);
-          setTotalPages(data.total_pages || 1);
+          setTotalProducts(data.pagination?.total || 0);
+          setTotalPages(data.pagination?.pages || 1);
         } else {
           throw new Error(data.message || "Failed to fetch products");
         }
@@ -66,14 +74,19 @@ const ProductsPage = () => {
       }
     };
 
-    // Fetch categories with better error handling
+    fetchProducts();
+  }, [currentPage, filters]);
+
+  // Fetch categories separately (only once)
+  useEffect(() => {
     const fetchCategories = async () => {
       try {
+        // Fixed URL with trailing slash
         const response = await fetch("http://localhost:5000/api/categories");
 
         if (!response.ok) {
           console.error("Failed to fetch categories:", response.status);
-          return; // Don't update state if request fails
+          return;
         }
 
         const data = await response.json();
@@ -88,8 +101,7 @@ const ProductsPage = () => {
     };
 
     fetchCategories();
-    fetchProducts();
-  }, [currentPage, filters]);
+  }, []); // Only run once on mount
 
   // Handle filter changes
   const handleFilterChange = (e) => {
@@ -121,8 +133,34 @@ const ProductsPage = () => {
     }
   };
 
+  // Helper function to get product image URL
+  const getProductImageUrl = (product) => {
+    // Check if product has image_url (from primary image in product_images table)
+    if (product.image_url) {
+      // If it's a relative path, make it absolute
+      if (product.image_url.startsWith("/uploads/")) {
+        return `http://localhost:5000${product.image_url}`;
+      }
+      return product.image_url;
+    }
+
+    // Fallback to placeholder
+    return "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
+  };
+
+  // Helper function to format price
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "LKR",
+      minimumFractionDigits: 0,
+    })
+      .format(price)
+      .replace("LKR", "Rs.");
+  };
+
   return (
-    <div className="min-h-screen bg-[#fff9f5] py-12 px-4 ">
+    <div className="min-h-screen bg-[#fff9f5] py-12 px-4">
       <div className="max-w-7xl mx-auto mt-10">
         {/* Page Header */}
         <div className="text-center mb-10">
@@ -130,10 +168,15 @@ const ProductsPage = () => {
           <p className="text-[#8c5f53] mt-2">
             Browse our delicious bakery products
           </p>
+          {totalProducts > 0 && (
+            <p className="text-sm text-[#8c5f53] mt-1">
+              {totalProducts} products found
+            </p>
+          )}
         </div>
 
         {/* Filters and Search Section */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-[#e7dcca]">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div className="w-full md:w-1/3">
               <input
@@ -207,51 +250,67 @@ const ProductsPage = () => {
           </div>
         </div>
 
-        {/* Loading and Error States */}
+        {/* Loading State */}
         {loading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3756b] mx-auto mb-4"></div>
-            <p className="text-[#8c5f53]">Loading products...</p>
+            <p className="text-[#8c5f53]">Loading delicious products...</p>
           </div>
         )}
 
+        {/* Error State */}
         {error && !loading && (
           <div className="text-center py-12">
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-4 max-w-md mx-auto">
+              <h3 className="font-semibold mb-2">Oops! Something went wrong</h3>
+              <p className="text-sm">{error}</p>
             </div>
             <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-[#d3756b] text-white rounded-lg"
+              onClick={() => {
+                setError(null);
+                window.location.reload();
+              }}
+              className="px-6 py-2 bg-[#d3756b] hover:bg-[#c25d52] text-white rounded-lg transition-colors"
             >
               Try Again
             </button>
           </div>
         )}
 
-        {/* Products Grid */}
+        {/* No Products Found */}
         {!loading && !error && products.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-xl shadow-md">
+          <div className="text-center py-12 bg-white rounded-xl shadow-md border border-[#e7dcca]">
             <svg
-              className="mx-auto h-16 w-16 text-[#e7dcca]"
+              className="mx-auto h-16 w-16 text-[#e7dcca] mb-4"
               fill="currentColor"
               viewBox="0 0 20 20"
             >
               <path
                 fillRule="evenodd"
-                d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12zm-1-5a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zm0-4a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z"
+                d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
                 clipRule="evenodd"
               />
             </svg>
-            <h3 className="mt-2 text-lg font-semibold text-[#5e3023]">
+            <h3 className="text-xl font-semibold text-[#5e3023] mb-2">
               No products found
             </h3>
-            <p className="text-[#8c5f53]">
-              Try changing your filters or search term
+            <p className="text-[#8c5f53] mb-4">
+              {filters.search || filters.category || filters.priceMin || filters.priceMax
+                ? "Try adjusting your filters or search terms"
+                : "No products are currently available"}
             </p>
+            {(filters.search || filters.category || filters.priceMin || filters.priceMax) && (
+              <button
+                onClick={resetFilters}
+                className="px-4 py-2 bg-[#d3756b] hover:bg-[#c25d52] text-white rounded-lg transition-colors"
+              >
+                Clear All Filters
+              </button>
+            )}
           </div>
         )}
 
+        {/* Products Grid */}
         {!loading && !error && products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map((product) => (
@@ -260,53 +319,71 @@ const ProductsPage = () => {
                 key={product.product_id}
                 className="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-[#e7dcca]"
               >
-                <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden">
+                <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-[#f5f5f5]">
                   <img
-                    src={
-                      product.image_url ||
-                      "https://via.placeholder.com/300x300?text=No+Image"
-                    }
+                    src={getProductImageUrl(product)}
                     alt={product.name}
                     className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
+                    }}
                   />
                 </div>
+
                 <div className="p-4">
-                  <h3 className="text-lg font-semibold text-[#5e3023] mb-1">
+                  <h3 className="text-lg font-semibold text-[#5e3023] mb-1 line-clamp-1">
                     {product.name}
                   </h3>
-                  <p className="text-sm text-[#8c5f53] mb-2 line-clamp-2">
+                  <p className="text-sm text-[#8c5f53] mb-3 line-clamp-2">
                     {product.description}
                   </p>
 
-                  <div className="flex justify-between items-center">
+                  {/* Price Section */}
+                  <div className="flex justify-between items-center mb-3">
                     <div>
                       {product.sale_price ? (
                         <div className="flex items-center gap-2">
                           <span className="text-lg font-bold text-[#d3756b]">
-                            ₹{product.sale_price}
+                            {formatPrice(product.sale_price)}
                           </span>
                           <span className="text-sm text-gray-500 line-through">
-                            ₹{product.price}
+                            {formatPrice(product.price)}
                           </span>
                         </div>
                       ) : (
                         <span className="text-lg font-bold text-[#5e3023]">
-                          ₹{product.price}
+                          {formatPrice(product.price)}
                         </span>
                       )}
                     </div>
 
                     {product.is_featured && (
-                      <span className="bg-[#f5e6d3] text-[#5e3023] text-xs px-2 py-1 rounded-full">
-                        Featured
+                      <span className="bg-[#f5e6d3] text-[#5e3023] text-xs px-2 py-1 rounded-full font-medium">
+                        ★ Featured
                       </span>
                     )}
                   </div>
 
-                  <div className="mt-3 text-xs text-[#8c5f53]">
-                    <span className="mr-3">{product.store_name}</span>
-                    <span>{product.category_name}</span>
+                  {/* Store and Category Info */}
+                  <div className="flex justify-between items-center text-xs text-[#8c5f53]">
+                    <span className="font-medium">{product.store_name}</span>
+                    <span className="bg-[#fff9f5] px-2 py-1 rounded">
+                      {product.category_name}
+                    </span>
                   </div>
+
+                  {/* Stock Indicator */}
+                  {product.stock_quantity !== undefined && (
+                    <div className="mt-2">
+                      {product.stock_quantity > 0 ? (
+                        <span className="text-xs text-green-600">
+                          {product.stock_quantity} in stock
+                        </span>
+                      ) : (
+                        <span className="text-xs text-red-500">Out of stock</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Link>
             ))}
@@ -320,35 +397,52 @@ const ProductsPage = () => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-1 rounded border border-[#e7dcca] bg-white disabled:opacity-50"
+                className="px-3 py-2 rounded-lg border border-[#e7dcca] bg-white hover:bg-[#f5e6d3] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                &lt;
+                ← Previous
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
+              {/* Page Numbers */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNumber = totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+
+                return (
                   <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`px-3 py-1 rounded ${
-                      currentPage === page
+                    key={pageNumber}
+                    onClick={() => handlePageChange(pageNumber)}
+                    className={`px-3 py-2 rounded-lg transition-colors ${
+                      currentPage === pageNumber
                         ? "bg-[#d3756b] text-white"
-                        : "border border-[#e7dcca] bg-white"
+                        : "border border-[#e7dcca] bg-white hover:bg-[#f5e6d3]"
                     }`}
                   >
-                    {page}
+                    {pageNumber}
                   </button>
-                )
-              )}
+                );
+              })}
 
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 rounded border border-[#e7dcca] bg-white disabled:opacity-50"
+                className="px-3 py-2 rounded-lg border border-[#e7dcca] bg-white hover:bg-[#f5e6d3] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                &gt;
+                Next →
               </button>
             </nav>
+
+            {/* Page Info */}
+            <div className="ml-4 text-sm text-[#8c5f53] self-center">
+              Page {currentPage} of {totalPages} ({totalProducts} total products)
+            </div>
           </div>
         )}
       </div>

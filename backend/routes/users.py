@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.user import User
 from utils.auth import role_required
+from database.db import get_cursor
 
 users_bp = Blueprint('users', __name__)
 
@@ -18,20 +19,46 @@ def get_profile():
             'message': 'User not found'
         }), 404
     
+    # Build response with user data
+    response_data = {
+        'user_id': user['user_id'],
+        'email': user['email'],
+        'first_name': user['first_name'],
+        'last_name': user['last_name'],
+        'phone': user['phone'],
+        'address': user['address'],
+        'city': user['city'],
+        'role': user['role'],
+        'loyalty_points': user['loyalty_points'],
+        'date_joined': user['date_joined'],
+        'last_login': user['last_login'],
+        'is_active': user['is_active']
+    }
+    
+    # If user is a supplier, get supplier-specific data
+    if user['role'] == 'supplier':
+        with get_cursor() as cursor:
+            sql = """
+                SELECT business_name, business_address, business_phone, 
+                       tax_id, is_verified
+                FROM suppliers 
+                WHERE user_id = %s
+            """
+            cursor.execute(sql, (user_id,))
+            supplier = cursor.fetchone()
+            
+            if supplier:
+                response_data.update({
+                    'business_name': supplier['business_name'],
+                    'business_address': supplier['business_address'],
+                    'business_phone': supplier['business_phone'],
+                    'tax_id': supplier['tax_id'],
+                    'is_verified': supplier['is_verified']
+                })
+    
     return jsonify({
         'success': True,
-        'user': {
-            'user_id': user['user_id'],
-            'email': user['email'],
-            'first_name': user['first_name'],
-            'last_name': user['last_name'],
-            'phone': user['phone'],
-            'address': user['address'],
-            'city': user['city'],
-            'role': user['role'],
-            'loyalty_points': user['loyalty_points'],
-            'date_joined': user['date_joined']
-        }
+        'user': response_data
     }), 200
 
 @users_bp.route('/profile', methods=['PUT'])

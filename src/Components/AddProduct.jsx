@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
-import axios from 'axios';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AddProduct = () => {
     const { currentUser, isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [imagePreview, setImagePreview] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -20,30 +22,16 @@ const AddProduct = () => {
         is_featured: false,
         is_active: true,
         image: null,
-        loyalty_points_earned: ''
+        loyalty_points_earned: '0'
     });
 
     const [errors, setErrors] = useState({});
-
-    // Categories - these should match your categories table
-    const categories = [
-        { id: 'cat1', name: 'Cakes' },
-        { id: 'cat2', name: 'Cupcakes' },
-        { id: 'cat3', name: 'Pastries' },
-        { id: 'cat4', name: 'Cookies' },
-        { id: 'cat5', name: 'Brownies' },
-        { id: 'cat6', name: 'Tarts' },
-        { id: 'cat7', name: 'Pies' },
-        { id: 'cat8', name: 'Donuts' },
-        { id: 'cat9', name: 'Breads' },
-        { id: 'cat10', name: 'Custom Orders' },
-        { id: 'cat11', name: 'Seasonal Specials' }
-    ];
 
     // Check if user is authenticated and is a supplier
     if (!isAuthenticated || currentUser?.role !== 'supplier') {
         return (
             <div className="min-h-screen bg-[#fff9f5] py-16 px-4 flex items-center justify-center">
+                <ToastContainer />
                 <div className="text-center">
                     <h1 className="text-2xl font-bold text-[#5e3023] mb-4">Access Denied</h1>
                     <p className="text-[#8c5f53] mb-6">You need to be logged in as a supplier to add products.</p>
@@ -57,6 +45,53 @@ const AddProduct = () => {
             </div>
         );
     }
+
+    // Fetch categories from the API
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/categories', {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        setCategories(data.categories);
+                    } else {
+                        toast.error('Failed to load categories');
+                        // Fallback to default categories if API fails
+                        setCategories([
+                            { category_id: 'cat1', name: 'Cakes' },
+                            { category_id: 'cat2', name: 'Cupcakes' },
+                            { category_id: 'cat3', name: 'Pastries' },
+                            { category_id: 'cat4', name: 'Cookies' },
+                            { category_id: 'cat5', name: 'Brownies' }
+                        ]);
+                    }
+                } else {
+                    throw new Error('Failed to fetch categories');
+                }
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+                toast.error('Failed to load categories');
+                // Fallback categories
+                setCategories([
+                    { category_id: 'cat1', name: 'Cakes' },
+                    { category_id: 'cat2', name: 'Cupcakes' },
+                    { category_id: 'cat3', name: 'Pastries' },
+                    { category_id: 'cat4', name: 'Cookies' },
+                    { category_id: 'cat5', name: 'Brownies' }
+                ]);
+            } finally {
+                setLoadingCategories(false);
+            }
+        };
+
+        fetchCategories();
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -116,6 +151,11 @@ const AddProduct = () => {
             newErrors.sale_price = 'Sale price must be less than regular price';
         }
 
+        // Validate loyalty points
+        if (formData.loyalty_points_earned && parseInt(formData.loyalty_points_earned) < 0) {
+            newErrors.loyalty_points_earned = 'Loyalty points must be 0 or greater';
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -131,41 +171,53 @@ const AddProduct = () => {
         setIsLoading(true);
 
         try {
-            // Debug: Check if token exists
             const token = localStorage.getItem('token');
-            console.log('Token exists:', !!token);
-            console.log('Token preview:', token ? token.substring(0, 50) + '...' : 'No token');
-            console.log('Current user:', currentUser);
+            if (!token) {
+                toast.error('Please log in again');
+                navigate('/login');
+                return;
+            }
 
             // Create FormData for file upload
             const productData = new FormData();
             
-            // Append all form fields (only non-empty values)
-            Object.keys(formData).forEach(key => {
-                if (key === 'image' && formData[key]) {
-                    productData.append('image', formData[key]);
-                } else if (key !== 'image' && formData[key] !== '' && formData[key] !== null && formData[key] !== undefined) {
-                    productData.append(key, formData[key]);
-                }
-            });
-
-            // Debug: Log FormData contents
-            console.log('FormData contents:');
-            for (let pair of productData.entries()) {
-                console.log(pair[0] + ': ' + (pair[1] instanceof File ? 'File: ' + pair[1].name : pair[1]));
+            // Append all form fields according to your schema
+            productData.append('name', formData.name.trim());
+            productData.append('description', formData.description.trim());
+            productData.append('price', formData.price);
+            productData.append('category_id', formData.category_id);
+            productData.append('stock_quantity', formData.stock_quantity);
+            productData.append('is_featured', formData.is_featured);
+            productData.append('is_active', formData.is_active);
+            productData.append('loyalty_points_earned', formData.loyalty_points_earned || '0');
+            
+            // Only append sale_price if it has a value
+            if (formData.sale_price && formData.sale_price.trim() !== '') {
+                productData.append('sale_price', formData.sale_price);
             }
 
-            const response = await axios.post('http://localhost:5000/api/products', productData, {
+            // Append image file
+            if (formData.image) {
+                productData.append('image', formData.image);
+            }
+
+            console.log('Submitting product data...');
+
+            const response = await fetch('http://localhost:5000/api/products', {
+                method: 'POST',
                 headers: {
-                    'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}`
-                }
+                    // Don't set Content-Type for FormData - browser will set it with boundary
+                },
+                body: productData
             });
 
-            console.log('Response:', response.data);
+            const responseData = await response.json();
+            console.log('Response:', responseData);
 
-            if (response.data.success) {
+            if (response.ok && responseData.success) {
                 toast.success('Product added successfully!');
+                
                 // Reset form
                 setFormData({
                     name: '',
@@ -177,28 +229,28 @@ const AddProduct = () => {
                     is_featured: false,
                     is_active: true,
                     image: null,
-                    loyalty_points_earned: ''
+                    loyalty_points_earned: '0'
                 });
                 setImagePreview(null);
+                setErrors({});
                 
-                // Redirect to products page or dashboard after 2 seconds
+                // Redirect to supplier dashboard after 2 seconds
                 setTimeout(() => {
                     navigate('/supplier-dashboard');
                 }, 2000);
+            } else {
+                throw new Error(responseData.message || 'Failed to add product');
             }
         } catch (error) {
             console.error('Error adding product:', error);
-            console.error('Error response:', error.response?.data);
-            console.error('Error status:', error.response?.status);
             
             let errorMessage = 'Failed to add product. Please try again.';
             
-            if (error.response?.status === 401) {
+            if (error.message.includes('401') || error.message.includes('token')) {
                 errorMessage = 'Your session has expired. Please log in again.';
-                // Optionally redirect to login
-                // navigate('/login');
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
+                setTimeout(() => navigate('/login'), 2000);
+            } else if (error.message) {
+                errorMessage = error.message;
             }
             
             toast.error(errorMessage);
@@ -206,6 +258,17 @@ const AddProduct = () => {
             setIsLoading(false);
         }
     };
+
+    if (loadingCategories) {
+        return (
+            <div className="min-h-screen bg-[#fff9f5] py-16 px-4 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3756b] mx-auto"></div>
+                    <p className="mt-4 text-[#8c5f53]">Loading categories...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#fff9f5] py-16 px-4">
@@ -329,7 +392,9 @@ const AddProduct = () => {
                                     >
                                         <option value="">Select Category</option>
                                         {categories.map(cat => (
-                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                            <option key={cat.category_id} value={cat.category_id}>
+                                                {cat.name}
+                                            </option>
                                         ))}
                                     </select>
                                     {errors.category_id && <p className="text-red-500 text-sm mt-1">{errors.category_id}</p>}
@@ -366,9 +431,12 @@ const AddProduct = () => {
                                     value={formData.loyalty_points_earned}
                                     onChange={handleInputChange}
                                     min="0"
-                                    className="w-full px-4 py-3 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+                                    className={`w-full px-4 py-3 rounded-lg border ${
+                                        errors.loyalty_points_earned ? 'border-red-500' : 'border-[#e7dcca]'
+                                    } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
                                     placeholder="25"
                                 />
+                                {errors.loyalty_points_earned && <p className="text-red-500 text-sm mt-1">{errors.loyalty_points_earned}</p>}
                                 <p className="text-sm text-[#8c5f53] mt-1">Points customers earn when purchasing this product</p>
                             </div>
 
@@ -454,6 +522,47 @@ const AddProduct = () => {
                                     </label>
                                 </div>
                                 {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
+                            </div>
+
+                            {/* Product Info Display */}
+                            <div className="bg-[#fff9f5] rounded-lg p-4">
+                                <h3 className="font-medium text-[#5e3023] mb-3">Product Summary</h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-[#8c5f53]">Name:</span>
+                                        <span className="text-[#5e3023] font-medium">{formData.name || 'Not set'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-[#8c5f53]">Price:</span>
+                                        <span className="text-[#5e3023] font-medium">
+                                            Rs. {formData.price || '0'}
+                                        </span>
+                                    </div>
+                                    {formData.sale_price && (
+                                        <div className="flex justify-between">
+                                            <span className="text-[#8c5f53]">Sale Price:</span>
+                                            <span className="text-green-600 font-medium">
+                                                Rs. {formData.sale_price}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span className="text-[#8c5f53]">Stock:</span>
+                                        <span className="text-[#5e3023] font-medium">{formData.stock_quantity || '0'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-[#8c5f53]">Category:</span>
+                                        <span className="text-[#5e3023] font-medium">
+                                            {categories.find(cat => cat.category_id === formData.category_id)?.name || 'Not selected'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-[#8c5f53]">Featured:</span>
+                                        <span className={`font-medium ${formData.is_featured ? 'text-green-600' : 'text-gray-500'}`}>
+                                            {formData.is_featured ? 'Yes' : 'No'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

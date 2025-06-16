@@ -1,75 +1,77 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
-from werkzeug.utils import secure_filename
-from datetime import datetime
-import os
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from database.db import get_cursor, get_db
 import uuid
+from datetime import datetime
+import json
+import os
+from werkzeug.utils import secure_filename
 
 products_bp = Blueprint('products', __name__)
 
-# Allowed file extensions
+# Configuration for file uploads
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads', 'products')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
-UPLOAD_FOLDER = 'uploads/products'
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@products_bp.route('/products', methods=['POST'])
+def save_product_image(image_file):
+    """Save uploaded image and return the file path"""
+    if not image_file or not allowed_file(image_file.filename):
+        return None
+    
+    # Create upload directory if it doesn't exist
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
+    # Generate unique filename
+    filename = secure_filename(image_file.filename)
+    unique_filename = f"{uuid.uuid4()}_{filename}"
+    file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+    
+    # Save the file
+    image_file.save(file_path)
+    
+    # Return relative path for database storage
+    return f"/uploads/products/{unique_filename}"
+
+# Handle both / and without trailing slash for POST
+@products_bp.route('', methods=['POST'], strict_slashes=False)
+@products_bp.route('/', methods=['POST'], strict_slashes=False)
 @jwt_required()
-def add_product():
-    """Add a new product"""
+def create_product():
+    """Create a new product"""
     try:
-        # Debug: Check JWT token
-        try:
-            user_id = get_jwt_identity()
-            print(f"JWT User ID: {user_id}")
-        except Exception as jwt_error:
-            print(f"JWT Error: {jwt_error}")
-            return jsonify({
-                'success': False,
-                'message': 'Invalid or expired token'
-            }), 401
-
-        # Verify user is a supplier and get their store
-        from database.db import get_cursor
+        user_id = get_jwt_identity()
         
+        # Check if user is a supplier
         with get_cursor() as cursor:
-            # Check if user exists and is supplier
-            sql = "SELECT user_id, role, email FROM users WHERE user_id = %s"
-            cursor.execute(sql, (user_id,))
+            cursor.execute("SELECT role FROM users WHERE user_id = %s", (user_id,))
             user = cursor.fetchone()
             
-            print(f"User found: {user}")
-            
-            if not user:
-                return jsonify({
-                    'success': False,
-                    'message': 'User not found'
-                }), 404
-                
-            if user['role'] != 'supplier':
+            if not user or user['role'] != 'supplier':
                 return jsonify({
                     'success': False,
                     'message': 'Only suppliers can add products'
                 }), 403
-
-            # Get supplier's store
-            sql = "SELECT store_id, name FROM stores WHERE owner_id = %s AND is_active = TRUE"
-            cursor.execute(sql, (user_id,))
+        
+        # Get supplier's store
+        with get_cursor() as cursor:
+            cursor.execute("SELECT store_id FROM stores WHERE owner_id = %s", (user_id,))
             store = cursor.fetchone()
-            
-            print(f"Store found: {store}")
             
             if not store:
                 return jsonify({
                     'success': False,
-                    'message': 'No active store found for this supplier. Please create a store first.'
+                    'message': 'You need to create a store first'
                 }), 400
-
+            
+            store_id = store['store_id']
+        
         # Get form data
-        name = request.form.get('name')
-        description = request.form.get('description')
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
         price = request.form.get('price')
         sale_price = request.form.get('sale_price')
         category_id = request.form.get('category_id')
@@ -77,264 +79,424 @@ def add_product():
         is_featured = request.form.get('is_featured', 'false').lower() == 'true'
         is_active = request.form.get('is_active', 'true').lower() == 'true'
         loyalty_points_earned = request.form.get('loyalty_points_earned', '0')
-
-        print(f"Form data received: name={name}, price={price}, category={category_id}, stock={stock_quantity}")
-
+        
         # Validate required fields
         if not all([name, description, price, category_id, stock_quantity]):
-            missing_fields = []
-            if not name: missing_fields.append('name')
-            if not description: missing_fields.append('description')
-            if not price: missing_fields.append('price')
-            if not category_id: missing_fields.append('category_id')
-            if not stock_quantity: missing_fields.append('stock_quantity')
-            
             return jsonify({
                 'success': False,
-                'message': f'Missing required fields: {", ".join(missing_fields)}'
+                'message': 'Missing required fields'
             }), 400
-
-        # Validate price
+        
+        # Validate numeric fields
         try:
             price = float(price)
-            if price <= 0:
-                raise ValueError
-        except ValueError:
-            return jsonify({
-                'success': False,
-                'message': 'Please enter a valid price'
-            }), 400
-
-        # Validate sale price if provided
-        if sale_price:
-            try:
+            stock_quantity = int(stock_quantity)
+            loyalty_points_earned = int(loyalty_points_earned)
+            
+            if sale_price:
                 sale_price = float(sale_price)
                 if sale_price >= price:
                     return jsonify({
                         'success': False,
                         'message': 'Sale price must be less than regular price'
                     }), 400
-            except ValueError:
-                sale_price = None
-        else:
-            sale_price = None
-
-        # Validate stock quantity
-        try:
-            stock_quantity = int(stock_quantity)
-            if stock_quantity < 0:
-                raise ValueError
         except ValueError:
             return jsonify({
                 'success': False,
-                'message': 'Please enter a valid stock quantity'
+                'message': 'Invalid numeric values'
             }), 400
-
-        # Validate loyalty points
-        try:
-            loyalty_points_earned = int(loyalty_points_earned) if loyalty_points_earned else 0
-        except ValueError:
-            loyalty_points_earned = 0
-
-        # Handle file upload
+        
+        # Handle image upload
         image_url = None
         if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename != '' and allowed_file(file.filename):
-                # Create upload directory if it doesn't exist
-                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                
-                # Generate unique filename
-                file_extension = file.filename.rsplit('.', 1)[1].lower()
-                image_filename = f"{uuid.uuid4()}.{file_extension}"
-                file_path = os.path.join(UPLOAD_FOLDER, image_filename)
-                file.save(file_path)
-                image_url = f"/uploads/products/{image_filename}"
-                print(f"Image saved: {image_url}")
-
+            image_file = request.files['image']
+            if image_file.filename:
+                image_url = save_product_image(image_file)
+                if not image_url:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Invalid image file'
+                    }), 400
+        
         # Generate product ID
         product_id = str(uuid.uuid4())
-
-        # Insert product into database
-        with get_cursor() as cursor:
+        
+        # Insert product into database (without image_url column)
+        db = get_db()
+        with db.cursor() as cursor:
             sql = """
                 INSERT INTO products (
-                    product_id, store_id, category_id, name, description, price, 
-                    sale_price, stock_quantity, is_featured, is_active,
-                    loyalty_points_earned, date_created, date_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    product_id, store_id, category_id, name, description, 
+                    price, sale_price, stock_quantity,
+                    is_featured, is_active, loyalty_points_earned, date_created
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(sql, (
-                product_id, store['store_id'], category_id, name, description, price,
-                sale_price, stock_quantity, is_featured, is_active,
-                loyalty_points_earned, datetime.utcnow(), datetime.utcnow()
+                product_id, store_id, category_id, name, description,
+                price, sale_price, stock_quantity,
+                is_featured, is_active, loyalty_points_earned, datetime.utcnow()
             ))
-
+            
             # If image was uploaded, add it to product_images table
             if image_url:
                 image_id = str(uuid.uuid4())
-                sql = """
+                image_sql = """
                     INSERT INTO product_images (
                         image_id, product_id, image_url, is_primary, display_order
                     ) VALUES (%s, %s, %s, %s, %s)
                 """
-                cursor.execute(sql, (image_id, product_id, image_url, True, 0))
-
-        print(f"Product created successfully: {product_id}")
-
+                cursor.execute(image_sql, (image_id, product_id, image_url, True, 0))
+            
+            db.commit()
+        
         return jsonify({
             'success': True,
             'message': 'Product added successfully',
-            'product_id': product_id
+            'product': {
+                'product_id': product_id,
+                'name': name,
+                'price': price
+            }
         }), 201
-
+        
     except Exception as e:
-        print(f"Error adding product: {e}")
-        import traceback
-        traceback.print_exc()
+        # Rollback on error
+        db = get_db()
+        db.rollback()
+        print(f"Error creating product: {e}")
         return jsonify({
             'success': False,
-            'message': 'An error occurred while adding the product'
+            'message': f'Error creating product: {str(e)}'
         }), 500
 
-@products_bp.route('/products', methods=['GET'])
+# Handle both / and without trailing slash for GET
+@products_bp.route('', methods=['GET'], strict_slashes=False)
+@products_bp.route('/', methods=['GET'], strict_slashes=False)
 def get_products():
-    """Get all products with filters"""
+    """Get all products with pagination and filtering"""
     try:
-        store_id = request.args.get('store_id')
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 12, type=int)
         category_id = request.args.get('category_id')
-        search = request.args.get('search')
+        store_id = request.args.get('store_id')
+        search = request.args.get('search', '').strip()
+        sort = request.args.get('sort', 'date_desc')
         is_featured = request.args.get('is_featured')
         
-        from database.db import get_cursor
+        # Calculate offset
+        offset = (page - 1) * limit
+        
+        # Build WHERE clause
+        where_conditions = ["p.is_active = true"]
+        params = []
+        
+        if category_id:
+            where_conditions.append("p.category_id = %s")
+            params.append(category_id)
+        
+        if store_id:
+            where_conditions.append("p.store_id = %s")
+            params.append(store_id)
+        
+        if search:
+            where_conditions.append("(p.name ILIKE %s OR p.description ILIKE %s)")
+            params.extend([f"%{search}%", f"%{search}%"])
+        
+        if is_featured == 'true':
+            where_conditions.append("p.is_featured = true")
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        # Build ORDER BY clause
+        if sort == 'price_asc':
+            order_clause = "p.price ASC"
+        elif sort == 'price_desc':
+            order_clause = "p.price DESC"
+        elif sort == 'name_asc':
+            order_clause = "p.name ASC"
+        elif sort == 'name_desc':
+            order_clause = "p.name DESC"
+        else:  # date_desc (default)
+            order_clause = "p.date_created DESC"
         
         with get_cursor() as cursor:
-            # Build query based on filters
-            sql = """
-                SELECT p.*, s.name as store_name, s.city as store_city,
-                       pi.image_url, c.name as category_name
+            # Get total count
+            count_sql = f"""
+                SELECT COUNT(*) as total
                 FROM products p
-                JOIN stores s ON p.store_id = s.store_id
-                LEFT JOIN categories c ON p.category_id = c.category_id
-                LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = TRUE
-                WHERE p.is_active = TRUE AND s.is_active = TRUE
+                WHERE {where_clause}
             """
-            params = []
+            cursor.execute(count_sql, params)
+            total = cursor.fetchone()['total']
             
-            if store_id:
-                sql += " AND p.store_id = %s"
-                params.append(store_id)
+            # Get products with store, category info, and primary image
+            sql = f"""
+                SELECT 
+                    p.product_id, p.name, p.description, p.price, p.sale_price,
+                    p.stock_quantity, p.is_featured, p.loyalty_points_earned,
+                    p.date_created, p.date_updated,
+                    c.name as category_name,
+                    s.name as store_name, s.store_id,
+                    pi.image_url as primary_image_url
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.category_id
+                LEFT JOIN stores s ON p.store_id = s.store_id
+                LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = true
+                WHERE {where_clause}
+                ORDER BY {order_clause}
+                LIMIT %s OFFSET %s
+            """
             
-            if category_id:
-                sql += " AND p.category_id = %s"
-                params.append(category_id)
-            
-            if search:
-                sql += " AND (p.name ILIKE %s OR p.description ILIKE %s)"
-                params.extend([f"%{search}%", f"%{search}%"])
-            
-            if is_featured:
-                sql += " AND p.is_featured = %s"
-                params.append(is_featured.lower() == 'true')
-            
-            sql += " ORDER BY p.date_created DESC"
-            
-            cursor.execute(sql, params)
+            cursor.execute(sql, params + [limit, offset])
             products = cursor.fetchall()
-
+            
+            # Convert to list of dictionaries
+            products_list = []
+            for product in products:
+                products_list.append({
+                    'product_id': product['product_id'],
+                    'name': product['name'],
+                    'description': product['description'],
+                    'price': float(product['price']),
+                    'sale_price': float(product['sale_price']) if product['sale_price'] else None,
+                    'stock_quantity': product['stock_quantity'],
+                    'image_url': product['primary_image_url'],  # Primary image from product_images table
+                    'is_featured': product['is_featured'],
+                    'loyalty_points_earned': product['loyalty_points_earned'],
+                    'date_created': product['date_created'],
+                    'date_updated': product['date_updated'],
+                    'category_name': product['category_name'],
+                    'store_name': product['store_name'],
+                    'store_id': product['store_id']
+                })
+        
         return jsonify({
             'success': True,
-            'products': products
+            'products': products_list,
+            'pagination': {
+                'total': total,
+                'page': page,
+                'limit': limit,
+                'pages': (total + limit - 1) // limit
+            }
         }), 200
-
+        
     except Exception as e:
         print(f"Error fetching products: {e}")
         return jsonify({
             'success': False,
-            'message': 'An error occurred while fetching products'
+            'message': f'Error fetching products: {str(e)}'
         }), 500
 
-@products_bp.route('/products/stats', methods=['GET'])
-@jwt_required()
-def get_product_stats():
-    """Get product statistics for a supplier"""
+@products_bp.route('/<product_id>', methods=['GET'])
+def get_product(product_id):
+    """Get a single product by ID"""
     try:
-        user_id = get_jwt_identity()
-        
-        from database.db import get_cursor
-        
         with get_cursor() as cursor:
-            # First check if user is a supplier
-            sql = "SELECT role FROM users WHERE user_id = %s"
-            cursor.execute(sql, (user_id,))
-            user = cursor.fetchone()
-            
-            if not user:
-                return jsonify({
-                    'success': False,
-                    'message': 'User not found'
-                }), 404
-                
-            # Safe access for both tuple and dict results
-            user_role = user[0] if isinstance(user, tuple) else user.get('role')
-            
-            if user_role != 'supplier':
-                return jsonify({
-                    'success': False,
-                    'message': 'Not a supplier account'
-                }), 403
-                
-            # Get supplier's store
-            sql = "SELECT store_id FROM stores WHERE owner_id = %s"
-            cursor.execute(sql, (user_id,))
-            store = cursor.fetchone()
-            
-            if not store:
-                return jsonify({
-                    'success': False,
-                    'message': 'No store found'
-                }), 404
-                
-            # Safe access for both tuple and dict results
-            store_id = store[0] if isinstance(store, tuple) else store.get('store_id')
-            
-            # Get product counts
             sql = """
                 SELECT 
-                    COUNT(*) AS total_products,
-                    SUM(CASE WHEN is_featured = TRUE THEN 1 ELSE 0 END) AS featured_products,
-                    SUM(CASE WHEN stock_quantity = 0 THEN 1 ELSE 0 END) AS out_of_stock
-                FROM products 
-                WHERE store_id = %s
+                    p.*, 
+                    c.name as category_name,
+                    s.name as store_name, s.store_id
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.category_id
+                LEFT JOIN stores s ON p.store_id = s.store_id
+                WHERE p.product_id = %s
             """
-            cursor.execute(sql, (store_id,))
-            stats = cursor.fetchone()
+            cursor.execute(sql, (product_id,))
+            product = cursor.fetchone()
             
-            # Handle dictionary-like result with column names
-            if hasattr(stats, 'get'):
-                response_data = {
-                    'total_products': stats.get('total_products') or 0,
-                    'featured_products': stats.get('featured_products') or 0,
-                    'out_of_stock': stats.get('out_of_stock') or 0
-                }
-            # Handle tuple result with positional indexes
-            else:
-                response_data = {
-                    'total_products': stats[0] if stats and len(stats) > 0 and stats[0] is not None else 0,
-                    'featured_products': stats[1] if stats and len(stats) > 1 and stats[1] is not None else 0,
-                    'out_of_stock': stats[2] if stats and len(stats) > 2 and stats[2] is not None else 0
-                }
+            if not product:
+                return jsonify({
+                    'success': False,
+                    'message': 'Product not found'
+                }), 404
+            
+            # Get all images for this product
+            cursor.execute("""
+                SELECT image_id, image_url, is_primary, display_order
+                FROM product_images 
+                WHERE product_id = %s 
+                ORDER BY display_order
+            """, (product_id,))
+            images = cursor.fetchall()
+            
+            product_dict = dict(product)
+            product_dict['images'] = [dict(img) for img in images]
             
             return jsonify({
                 'success': True,
-                'stats': response_data
+                'product': product_dict
             }), 200
             
     except Exception as e:
-        import traceback
-        print(f"Error fetching product stats: {e}")
-        print(traceback.format_exc())
+        print(f"Error fetching product: {e}")
         return jsonify({
             'success': False,
-            'message': f'Error fetching product stats: {str(e)}'
+            'message': f'Error fetching product: {str(e)}'
         }), 500
+
+@products_bp.route('/<product_id>', methods=['PUT'])
+@jwt_required()
+def update_product(product_id):
+    """Update a product"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # Check if user owns this product
+        with get_cursor() as cursor:
+            sql = """
+                SELECT p.*, s.owner_id 
+                FROM products p
+                JOIN stores s ON p.store_id = s.store_id
+                WHERE p.product_id = %s
+            """
+            cursor.execute(sql, (product_id,))
+            product = cursor.fetchone()
+            
+            if not product:
+                return jsonify({
+                    'success': False,
+                    'message': 'Product not found'
+                }), 404
+            
+            if product['owner_id'] != user_id:
+                return jsonify({
+                    'success': False,
+                    'message': 'You can only update your own products'
+                }), 403
+        
+        # Get update data
+        data = request.json
+        
+        # Build update query dynamically
+        update_fields = []
+        values = []
+        
+        updatable_fields = {
+            'name': 'name',
+            'description': 'description',
+            'price': 'price',
+            'sale_price': 'sale_price',
+            'stock_quantity': 'stock_quantity',
+            'is_featured': 'is_featured',
+            'is_active': 'is_active',
+            'loyalty_points_earned': 'loyalty_points_earned'
+        }
+        
+        for field, column in updatable_fields.items():
+            if field in data:
+                update_fields.append(f"{column} = %s")
+                values.append(data[field])
+        
+        if not update_fields:
+            return jsonify({
+                'success': False,
+                'message': 'No valid fields to update'
+            }), 400
+        
+        # Add updated timestamp
+        update_fields.append("date_updated = CURRENT_TIMESTAMP")
+        values.append(product_id)  # For WHERE clause
+        
+        # Execute update
+        db = get_db()
+        with db.cursor() as cursor:
+            sql = f"UPDATE products SET {', '.join(update_fields)} WHERE product_id = %s"
+            cursor.execute(sql, values)
+            db.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Product updated successfully'
+        }), 200
+        
+    except Exception as e:
+        db = get_db()
+        db.rollback()
+        print(f"Error updating product: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error updating product: {str(e)}'
+        }), 500
+
+@products_bp.route('/<product_id>', methods=['DELETE'])
+@jwt_required()
+def delete_product(product_id):
+    """Delete a product (soft delete by setting is_active = false)"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # Check if user owns this product
+        with get_cursor() as cursor:
+            sql = """
+                SELECT p.*, s.owner_id 
+                FROM products p
+                JOIN stores s ON p.store_id = s.store_id
+                WHERE p.product_id = %s
+            """
+            cursor.execute(sql, (product_id,))
+            product = cursor.fetchone()
+            
+            if not product:
+                return jsonify({
+                    'success': False,
+                    'message': 'Product not found'
+                }), 404
+            
+            if product['owner_id'] != user_id:
+                return jsonify({
+                    'success': False,
+                    'message': 'You can only delete your own products'
+                }), 403
+        
+        # Soft delete (set is_active = false)
+        db = get_db()
+        with db.cursor() as cursor:
+            sql = "UPDATE products SET is_active = false, date_updated = CURRENT_TIMESTAMP WHERE product_id = %s"
+            cursor.execute(sql, (product_id,))
+            db.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Product deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db = get_db()
+        db.rollback()
+        print(f"Error deleting product: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting product: {str(e)}'
+        }), 500
+
+@products_bp.route('/test-upload', methods=['GET'])
+def test_upload_directory():
+    """Test endpoint to check upload directory"""
+    try:
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads', 'products')
+        
+        # Check if directory exists
+        dir_exists = os.path.exists(upload_dir)
+        
+        # List files if directory exists
+        files = []
+        if dir_exists:
+            try:
+                files = os.listdir(upload_dir)
+            except:
+                files = ["Error reading directory"]
+        
+        return jsonify({
+            'success': True,
+            'upload_directory': upload_dir,
+            'directory_exists': dir_exists,
+            'files': files
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })

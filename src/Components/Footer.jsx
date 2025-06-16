@@ -19,19 +19,19 @@ const Footer = () => {
           <h3 className="text-xl font-bold mb-4 text-[#5e3023]">Quick Links</h3>
           <ul className="space-y-3 text-[#8c5f53]">
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Home
+              <a href="/">Home</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              About
+              <a href="/about">About</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Shop
+              <a href="/manage-products">Shop</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Blog
+              <a href="/blog">Blog</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Contact
+              <a href="/contact">Contact</a>
             </li>
           </ul>
         </div>
@@ -41,19 +41,19 @@ const Footer = () => {
           <h3 className="text-xl font-bold mb-4 text-[#5e3023]">Policies</h3>
           <ul className="space-y-3 text-[#8c5f53]">
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              FAQs
+              <a href="/about">FAQs</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Terms & Conditions
+              <a href="/terms">Terms & Conditions</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Privacy Policy
+              <a href="/privacy">Privacy Policy</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Shipping Policy
+              <a href="/shipping">Shipping Policy</a>
             </li>
             <li className="hover:text-[#d3756b] cursor-pointer transition-colors">
-              Refund Policy
+              <a href="/refund">Refund Policy</a>
             </li>
           </ul>
         </div>

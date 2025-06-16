@@ -1,45 +1,35 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, request, jsonify
 from database.db import get_cursor
 
 categories_bp = Blueprint('categories', __name__)
 
-@categories_bp.route('/categories', methods=['GET'])
+# Handle both / and without trailing slash for GET
+@categories_bp.route('', methods=['GET'], strict_slashes=False)
+@categories_bp.route('/', methods=['GET'], strict_slashes=False)
 def get_categories():
-    """Get all product categories"""
+    """Get all categories"""
     try:
         with get_cursor() as cursor:
-            cursor.execute("""
-                SELECT category_id, name, description, image_url 
-                FROM categories
-                ORDER BY name
-            """)
+            sql = "SELECT category_id, name, description FROM categories ORDER BY name"
+            cursor.execute(sql)
             categories = cursor.fetchall()
             
-            # Convert to a list of dictionaries for JSON response
-            result = []
-            for cat in categories:
-                if isinstance(cat, tuple):
-                    # If result is tuple, build dict
-                    result.append({
-                        'category_id': cat[0],
-                        'name': cat[1],
-                        'description': cat[2],
-                        'image_url': cat[3]
-                    })
-                else:
-                    # If result is already a dict-like object
-                    result.append(cat)
-            
-            return jsonify({
-                'success': True,
-                'categories': result
-            }), 200
-            
-    except Exception as e:
-        import traceback
-        print(f"Error fetching categories: {e}")
-        print(traceback.format_exc())
+            categories_list = []
+            for category in categories:
+                categories_list.append({
+                    'category_id': category['category_id'],
+                    'name': category['name'],
+                    'description': category['description']
+                })
+        
         return jsonify({
-            'success': False, 
+            'success': True,
+            'categories': categories_list
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching categories: {e}")
+        return jsonify({
+            'success': False,
             'message': f'Error fetching categories: {str(e)}'
         }), 500
