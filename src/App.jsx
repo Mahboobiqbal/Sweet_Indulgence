@@ -24,6 +24,8 @@ import ProfilePage from "./Components/profile";
 import StoreSettingsPage from "./Components/storeSettingPage";
 import OrdersPage from "./Components/OrdersPage";
 import HomePage from "./Components/HomPage";
+import ProductDetails from "./Components/ProductDetsils";
+import Payment from "./Components/Payment";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -57,6 +59,8 @@ const AppRoutes = () => {
 
         <Route path="/store-settings" element={<StoreSettingsPage />} />
         <Route path="/manage-orders" element={<OrdersPage />} />
+        <Route path="/product/:productId" element={<ProductDetails />} />
+        <Route path="/payment" element={<Payment />} />
 
         {/* Protected Routes */}
         <Route

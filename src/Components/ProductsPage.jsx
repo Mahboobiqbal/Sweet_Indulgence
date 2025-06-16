@@ -295,11 +295,17 @@ const ProductsPage = () => {
               No products found
             </h3>
             <p className="text-[#8c5f53] mb-4">
-              {filters.search || filters.category || filters.priceMin || filters.priceMax
+              {filters.search ||
+              filters.category ||
+              filters.priceMin ||
+              filters.priceMax
                 ? "Try adjusting your filters or search terms"
                 : "No products are currently available"}
             </p>
-            {(filters.search || filters.category || filters.priceMin || filters.priceMax) && (
+            {(filters.search ||
+              filters.category ||
+              filters.priceMin ||
+              filters.priceMax) && (
               <button
                 onClick={resetFilters}
                 className="px-4 py-2 bg-[#d3756b] hover:bg-[#c25d52] text-white rounded-lg transition-colors"
@@ -325,7 +331,8 @@ const ProductsPage = () => {
                     alt={product.name}
                     className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
+                      e.target.src =
+                        "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
                     }}
                   />
                 </div>
@@ -380,7 +387,9 @@ const ProductsPage = () => {
                           {product.stock_quantity} in stock
                         </span>
                       ) : (
-                        <span className="text-xs text-red-500">Out of stock</span>
+                        <span className="text-xs text-red-500">
+                          Out of stock
+                        </span>
                       )}
                     </div>
                   )}
@@ -441,7 +450,8 @@ const ProductsPage = () => {
 
             {/* Page Info */}
             <div className="ml-4 text-sm text-[#8c5f53] self-center">
-              Page {currentPage} of {totalPages} ({totalProducts} total products)
+              Page {currentPage} of {totalPages} ({totalProducts} total
+              products)
             </div>
           </div>
         )}
