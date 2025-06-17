@@ -175,13 +175,22 @@ const HomePage = () => {
 
   // Helper functions
   const getProductImageUrl = (product) => {
-    if (product.image_url) {
+    // Check if product has image_url and it's not null/empty
+    if (product.image_url && product.image_url.trim() !== '') {
+      // If it's a relative path, make it absolute
       if (product.image_url.startsWith("/uploads/")) {
         return `http://localhost:5000${product.image_url}`;
       }
-      return product.image_url;
+      // If it's already a full URL, return as is
+      if (product.image_url.startsWith("http")) {
+        return product.image_url;
+      }
+      // If it's a relative path without leading slash
+      return `http://localhost:5000/${product.image_url}`;
     }
-    return "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
+    
+    // Fallback to a working placeholder image with product name
+    return `https://via.placeholder.com/300x300/f5e6d3/8B4513?text=${encodeURIComponent(product.name || 'Product')}`;
   };
 
   const formatPrice = (price) => {
@@ -450,7 +459,8 @@ const HomePage = () => {
                           alt={product.name}
                           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
-                            e.target.src = "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
+                            // Use a more reliable fallback with product name
+                            e.target.src = `https://via.placeholder.com/300x300/f5e6d3/8B4513?text=${encodeURIComponent(product.name || 'Product')}`;
                           }}
                         />
                         

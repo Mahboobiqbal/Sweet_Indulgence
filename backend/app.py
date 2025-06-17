@@ -7,6 +7,10 @@ from routes.users import users_bp
 from routes.stores import stores_bp
 from routes.products import products_bp
 from routes.categories import categories_bp
+from routes.wishlist import wishlist_bp
+from routes.orders import orders_bp 
+
+
 import os
 
 def create_app():
@@ -29,6 +33,8 @@ def create_app():
     app.register_blueprint(stores_bp, url_prefix='/api/stores')
     app.register_blueprint(products_bp, url_prefix='/api/products')
     app.register_blueprint(categories_bp, url_prefix='/api/categories')
+    app.register_blueprint(wishlist_bp, url_prefix='/api/wishlist')
+    app.register_blueprint(orders_bp, url_prefix='/api/orders')
     
     # Add static file serving for uploads
     @app.route('/uploads/<path:subfolder>/<filename>')

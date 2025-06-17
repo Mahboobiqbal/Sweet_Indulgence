@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/api";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -15,6 +16,7 @@ const Login = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -52,11 +54,8 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Call login API
-      const response = await authService.login({
-        email: formData.email,
-        password: formData.password
-      });
+      // Use the login from auth context
+      await login(formData.email, formData.password);
       
       toast.success("Login successful!");
       
@@ -67,13 +66,8 @@ const Login = () => {
         localStorage.removeItem('rememberMe');
       }
       
-      // Navigate based on user role
-      const user = response.user;
-      if (user.role === "supplier") {
-        navigate("/supplier-dashboard");
-      } else {
-        navigate("/");
-      }
+      // Navigate to home page after successful login
+      navigate("/home", { replace: true });
       
     } catch (error) {
       console.error("Login error:", error);

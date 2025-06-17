@@ -159,6 +159,50 @@ const ProductsPage = () => {
       .replace("LKR", "Rs.");
   };
 
+  // Add to cart handler
+  const handleAddToCart = (product) => {
+    const success = addToCart(product, 1);
+    if (success) {
+      toast.success(`${product.name} added to cart!`);
+    } else {
+      toast.error("Failed to add item to cart");
+    }
+  };
+
+  // Add to wishlist handler
+  const handleAddToWishlist = async (product) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to add items to wishlist");
+        navigate("/login");
+        return;
+      }
+
+      const response = await fetch("http://localhost:5000/api/wishlist/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          product_id: product.product_id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success("Product added to wishlist!");
+      } else {
+        toast.error(data.message || "Failed to add to wishlist");
+      }
+    } catch (error) {
+      console.error("Error adding to wishlist:", error);
+      toast.error("Failed to add to wishlist");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fff9f5] py-12 px-4">
       <div className="max-w-7xl mx-auto mt-10">
@@ -319,60 +363,56 @@ const ProductsPage = () => {
         {/* Products Grid */}
         {!loading && !error && products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* Replace the existing product cards with this updated version */}
             {products.map((product) => (
-              <Link
-                to={`/product/${product.product_id}`}
+              <div
                 key={product.product_id}
-                className="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-[#e7dcca]"
+                className="bg-white rounded-xl shadow-md border border-[#e7dcca] overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
               >
-                <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-[#f5f5f5]">
-                  <img
-                    src={getProductImageUrl(product)}
-                    alt={product.name}
-                    className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      e.target.src =
-                        "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
-                    }}
-                  />
-                </div>
+                <Link to={`/product/${product.product_id}`} className="block">
+                  <div className="h-48 overflow-hidden bg-[#f8f9fa]">
+                    <img
+                      src={getProductImageUrl(product)}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      onError={(e) => {
+                        e.target.src = "/placeholder-product.jpg";
+                      }}
+                    />
+                  </div>
+                </Link>
 
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-[#5e3023] mb-1 line-clamp-1">
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-[#8c5f53] mb-3 line-clamp-2">
+                <div className="p-4 flex-1 flex flex-col">
+                  <Link to={`/product/${product.product_id}`}>
+                    <h3 className="text-lg font-semibold text-[#5e3023] mb-2 hover:text-[#d3756b] transition-colors">
+                      {product.name}
+                    </h3>
+                  </Link>
+
+                  <p className="text-[#8c5f53] text-sm mb-3 line-clamp-2 flex-1">
                     {product.description}
                   </p>
 
-                  {/* Price Section */}
-                  <div className="flex justify-between items-center mb-3">
-                    <div>
-                      {product.sale_price ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-[#d3756b]">
-                            {formatPrice(product.sale_price)}
-                          </span>
-                          <span className="text-sm text-gray-500 line-through">
-                            {formatPrice(product.price)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-lg font-bold text-[#5e3023]">
-                          {formatPrice(product.price)}
+                  {/* Price */}
+                  <div className="flex items-center justify-between mb-3">
+                    {product.sale_price ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg font-bold text-[#d3756b]">
+                          Rs. {product.sale_price}
                         </span>
-                      )}
-                    </div>
-
-                    {product.is_featured && (
-                      <span className="bg-[#f5e6d3] text-[#5e3023] text-xs px-2 py-1 rounded-full font-medium">
-                        ★ Featured
+                        <span className="text-sm text-gray-500 line-through">
+                          Rs. {product.price}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-lg font-bold text-[#5e3023]">
+                        Rs. {product.price}
                       </span>
                     )}
                   </div>
 
                   {/* Store and Category Info */}
-                  <div className="flex justify-between items-center text-xs text-[#8c5f53]">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#8c5f53] mb-3">
                     <span className="font-medium">{product.store_name}</span>
                     <span className="bg-[#fff9f5] px-2 py-1 rounded">
                       {product.category_name}
@@ -381,7 +421,7 @@ const ProductsPage = () => {
 
                   {/* Stock Indicator */}
                   {product.stock_quantity !== undefined && (
-                    <div className="mt-2">
+                    <div className="mb-3">
                       {product.stock_quantity > 0 ? (
                         <span className="text-xs text-green-600">
                           {product.stock_quantity} in stock
@@ -393,8 +433,48 @@ const ProductsPage = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 mt-auto">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                      disabled={product.stock_quantity <= 0}
+                      className="flex-1 bg-[#d3756b] hover:bg-[#c25d52] text-white py-2 px-3 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                      Cart
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAddToWishlist(product);
+                      }}
+                      className="bg-white border border-[#d3756b] text-[#d3756b] hover:bg-[#d3756b] hover:text-white py-2 px-3 rounded-lg transition-colors flex items-center justify-center"
+                    >
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}

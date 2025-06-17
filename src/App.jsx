@@ -26,17 +26,29 @@ import OrdersPage from "./Components/OrdersPage";
 import HomePage from "./Components/HomPage";
 import ProductDetails from "./Components/ProductDetsils";
 import Payment from "./Components/Payment";
-
+import Wishlist from "./Components/WishList";
+import Cart from "./Components/Cart";
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { currentUser, isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/home" replace />;
+  }
+
+  return children;
+};
+
+// Public Route Component (redirect to /home if authenticated)
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return <Navigate to="/home" replace />;
   }
 
   return children;
@@ -48,40 +60,48 @@ const AppRoutes = () => {
     <>
       <Navbar />
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
+        {/* Public Routes - redirect to /home if authenticated */}
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <Home />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <PublicRoute>
+              <SignUpPage />
+            </PublicRoute>
+          }
+        />
+
+        {/* Semi-public routes (available to all) */}
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
 
-        <Route path="/store-settings" element={<StoreSettingsPage />} />
-        <Route path="/manage-orders" element={<OrdersPage />} />
-        <Route path="/product/:productId" element={<ProductDetails />} />
-        <Route path="/payment" element={<Payment />} />
-
-        {/* Protected Routes */}
+        {/* Protected Routes - Require Authentication */}
         <Route
-          path="/create-store"
+          path="/home"
           element={
-            <ProtectedRoute allowedRoles={["supplier", "admin"]}>
-              <StoreCreationPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route
-          path="/add-product"
-          element={
-            <ProtectedRoute allowedRoles={["supplier", "admin"]}>
-              <AddProduct />
+            <ProtectedRoute>
+              <HomePage />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/manage-products"
+          path="/products"
           element={
             <ProtectedRoute>
               <ProductsPage />
@@ -89,13 +109,108 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/supplier-dashboard"
+          path="/product/:productId"
           element={
             <ProtectedRoute>
+              <ProductDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment"
+          element={
+            <ProtectedRoute>
+              <Payment />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <OrdersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Customer-only Routes */}
+        <Route
+          path="/wishlist"
+          element={
+            <ProtectedRoute allowedRoles={["customer"]}>
+              <Wishlist />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute allowedRoles={["customer"]}>
+              <Cart />
+            </ProtectedRoute>
+          }
+          />
+
+        {/* Supplier-only Routes */}
+        <Route
+          path="/supplier-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["supplier"]}>
               <SupplierDashboard />
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/add-product"
+          element={
+            <ProtectedRoute allowedRoles={["supplier"]}>
+              <AddProduct />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manage-products"
+          element={
+            <ProtectedRoute allowedRoles={["supplier"]}>
+              <ProductsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manage-orders"
+          element={
+            <ProtectedRoute allowedRoles={["supplier"]}>
+              <OrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/store-settings"
+          element={
+            <ProtectedRoute allowedRoles={["supplier"]}>
+              <StoreSettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/create-store"
+          element={
+            <ProtectedRoute allowedRoles={["supplier"]}>
+              <StoreCreationPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Footer />
       <ToastContainer />

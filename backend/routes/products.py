@@ -500,3 +500,88 @@ def test_upload_directory():
             'success': False,
             'error': str(e)
         })
+
+@products_bp.route('/stats', methods=['GET'])
+@jwt_required()
+def get_product_stats():
+    """Get product statistics for the current user's store"""
+    try:
+        user_id = get_jwt_identity()
+        
+        with get_cursor() as cursor:
+            # Get the user's store first
+            cursor.execute("SELECT store_id FROM stores WHERE owner_id = %s AND is_active = true", (user_id,))
+            store = cursor.fetchone()
+            
+            if not store:
+                return jsonify({
+                    'success': True,
+                    'stats': {
+                        'total_products': 0,
+                        'active_products': 0,
+                        'featured_products': 0,
+                        'out_of_stock': 0,
+                        'low_stock': 0,
+                        'total_value': 0,
+                        'avg_price': 0
+                    }
+                }), 200
+            
+            store_id = store['store_id']
+            
+            # Get comprehensive product statistics
+            stats_queries = {
+                'total_products': """
+                    SELECT COUNT(*) as count FROM products 
+                    WHERE store_id = %s
+                """,
+                'active_products': """
+                    SELECT COUNT(*) as count FROM products 
+                    WHERE store_id = %s AND is_active = true
+                """,
+                'featured_products': """
+                    SELECT COUNT(*) as count FROM products 
+                    WHERE store_id = %s AND is_featured = true AND is_active = true
+                """,
+                'out_of_stock': """
+                    SELECT COUNT(*) as count FROM products 
+                    WHERE store_id = %s AND stock_quantity = 0 AND is_active = true
+                """,
+                'low_stock': """
+                    SELECT COUNT(*) as count FROM products 
+                    WHERE store_id = %s AND stock_quantity > 0 AND stock_quantity <= 5 AND is_active = true
+                """
+            }
+            
+            stats = {}
+            
+            # Execute each query
+            for stat_name, query in stats_queries.items():
+                cursor.execute(query, (store_id,))
+                result = cursor.fetchone()
+                stats[stat_name] = result['count'] if result else 0
+            
+            # Get total inventory value and average price
+            cursor.execute("""
+                SELECT 
+                    COALESCE(SUM(CASE WHEN sale_price IS NOT NULL THEN sale_price ELSE price END * stock_quantity), 0) as total_value,
+                    COALESCE(AVG(CASE WHEN sale_price IS NOT NULL THEN sale_price ELSE price END), 0) as avg_price
+                FROM products 
+                WHERE store_id = %s AND is_active = true
+            """, (store_id,))
+            
+            financial_stats = cursor.fetchone()
+            stats['total_value'] = float(financial_stats['total_value']) if financial_stats['total_value'] else 0
+            stats['avg_price'] = float(financial_stats['avg_price']) if financial_stats['avg_price'] else 0
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        }), 200
+        
+    except Exception as e:
+        print(f"Error fetching product stats: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error fetching product stats: {str(e)}'
+        }), 500

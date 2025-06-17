@@ -1,13 +1,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { authService } from '../services/api';
-import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user is already logged in
@@ -46,7 +44,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     authService.logout();
     setCurrentUser(null);
-    navigate('/login');
+    // Don't navigate from context - let components handle navigation
   };
 
   const registerCustomer = async (userData) => {
