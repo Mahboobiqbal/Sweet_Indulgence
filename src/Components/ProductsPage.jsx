@@ -367,26 +367,31 @@ const ProductsPage = () => {
             {products.map((product) => (
               <div
                 key={product.product_id}
-                className="bg-white rounded-xl shadow-md border border-[#e7dcca] overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
               >
-                <Link to={`/product/${product.product_id}`} className="block">
-                  <div className="h-48 overflow-hidden bg-[#f8f9fa]">
-                    <img
-                      src={getProductImageUrl(product)}
-                      alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                      onError={(e) => {
-                        e.target.src = "/placeholder-product.jpg";
-                      }}
-                    />
-                  </div>
+                <Link
+                  to={`/product/${product.id}`}
+                  className="block"
+                  style={{ color: "#5e3023" }}
+                >
+                  <img
+                    src={getProductImageUrl(product)}
+                    alt={product.name}
+                    className="w-full h-48 object-cover"
+                    onError={(e) => {
+                      e.target.src =
+                        "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
+                    }}
+                  />
                 </Link>
 
-                <div className="p-4 flex-1 flex flex-col">
-                  <Link to={`/product/${product.product_id}`}>
-                    <h3 className="text-lg font-semibold text-[#5e3023] mb-2 hover:text-[#d3756b] transition-colors">
-                      {product.name}
-                    </h3>
+                <div className="p-4">
+                  <Link
+                    to={`/product/${product.id}`}
+                    style={{ color: "#5e3023" }}
+                    className="hover:underline"
+                  >
+                    <h3 className="text-lg font-semibold mb-2">{product.name}</h3>
                   </Link>
 
                   <p className="text-[#8c5f53] text-sm mb-3 line-clamp-2 flex-1">
@@ -486,45 +491,44 @@ const ProductsPage = () => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-2 rounded-lg border border-[#e7dcca] bg-white hover:bg-[#f5e6d3] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 border rounded disabled:opacity-50"
+                style={{
+                  borderColor: "#5e3023",
+                  color: currentPage === 1 ? "#gray" : "#5e3023",
+                }}
               >
-                ← Previous
+                Previous
               </button>
 
               {/* Page Numbers */}
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNumber;
-                if (totalPages <= 5) {
-                  pageNumber = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNumber = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNumber = totalPages - 4 + i;
-                } else {
-                  pageNumber = currentPage - 2 + i;
-                }
-
-                return (
-                  <button
-                    key={pageNumber}
-                    onClick={() => handlePageChange(pageNumber)}
-                    className={`px-3 py-2 rounded-lg transition-colors ${
-                      currentPage === pageNumber
-                        ? "bg-[#d3756b] text-white"
-                        : "border border-[#e7dcca] bg-white hover:bg-[#f5e6d3]"
-                    }`}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              })}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-3 py-2 border rounded ${
+                    currentPage === page
+                      ? "bg-[#5e3023] text-white"
+                      : "hover:bg-gray-100"
+                  }`}
+                  style={{
+                    borderColor: "#5e3023",
+                    color: currentPage === page ? "white" : "#5e3023",
+                  }}
+                >
+                  {page}
+                </button>
+              ))}
 
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 rounded-lg border border-[#e7dcca] bg-white hover:bg-[#f5e6d3] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 border rounded disabled:opacity-50"
+                style={{
+                  borderColor: "#5e3023",
+                  color: currentPage === totalPages ? "gray" : "#5e3023",
+                }}
               >
-                Next →
+                Next
               </button>
             </nav>
 

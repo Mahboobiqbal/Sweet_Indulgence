@@ -37,12 +37,14 @@ const HomePage = () => {
         params.append("page", currentPage);
         params.append("limit", 12);
 
-        if (filters.category_id) params.append("category_id", filters.category_id);
+        if (filters.category_id)
+          params.append("category_id", filters.category_id);
         if (filters.store_id) params.append("store_id", filters.store_id);
         if (filters.search) params.append("search", filters.search);
         if (filters.priceMin) params.append("price_min", filters.priceMin);
         if (filters.priceMax) params.append("price_max", filters.priceMax);
-        if (filters.is_featured) params.append("is_featured", filters.is_featured);
+        if (filters.is_featured)
+          params.append("is_featured", filters.is_featured);
 
         // Map sort options to API parameters
         const sortMapping = {
@@ -112,11 +114,13 @@ const HomePage = () => {
         if (products.length > 0) {
           const uniqueStores = products.reduce((acc, product) => {
             if (product.store_id && product.store_name) {
-              const existing = acc.find(store => store.store_id === product.store_id);
+              const existing = acc.find(
+                (store) => store.store_id === product.store_id
+              );
               if (!existing) {
                 acc.push({
                   store_id: product.store_id,
-                  name: product.store_name
+                  name: product.store_name,
                 });
               }
             }
@@ -176,7 +180,7 @@ const HomePage = () => {
   // Helper functions
   const getProductImageUrl = (product) => {
     // Check if product has image_url and it's not null/empty
-    if (product.image_url && product.image_url.trim() !== '') {
+    if (product.image_url && product.image_url.trim() !== "") {
       // If it's a relative path, make it absolute
       if (product.image_url.startsWith("/uploads/")) {
         return `http://localhost:5000${product.image_url}`;
@@ -188,9 +192,11 @@ const HomePage = () => {
       // If it's a relative path without leading slash
       return `http://localhost:5000/${product.image_url}`;
     }
-    
+
     // Fallback to a working placeholder image with product name
-    return `https://via.placeholder.com/300x300/f5e6d3/8B4513?text=${encodeURIComponent(product.name || 'Product')}`;
+    return `https://via.placeholder.com/300x300/f5e6d3/8B4513?text=${encodeURIComponent(
+      product.name || "Product"
+    )}`;
   };
 
   const formatPrice = (price) => {
@@ -208,11 +214,11 @@ const HomePage = () => {
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-[#5e3023] to-[#8c5f53] text-white py-16 px-4 pt-24">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl font-bold mb-4">Sweet Indulgence</h1>
+          <h1 className="text-5xl font-bold mb-4">Bake House</h1>
           <p className="text-xl mb-8 opacity-90">
             Discover the finest bakery products from local artisans
           </p>
-          
+
           {/* Main Search Bar */}
           <div className="max-w-2xl mx-auto relative">
             <input
@@ -223,8 +229,18 @@ const HomePage = () => {
               className="w-full px-6 py-4 rounded-full text-gray-800 text-lg focus:outline-none focus:ring-4 focus:ring-[#d3756b] shadow-lg"
             />
             <button className="absolute right-2 top-2 bg-[#d3756b] hover:bg-[#c25d52] text-white p-2 rounded-full transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </button>
           </div>
@@ -234,41 +250,57 @@ const HomePage = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          
           {/* Sidebar Filters */}
           <aside className="w-full lg:w-80 flex-shrink-0">
             <div className="bg-white rounded-xl shadow-md border border-[#e7dcca] sticky top-4">
-              
               {/* Mobile Filter Toggle */}
               <div className="lg:hidden p-4 border-b border-[#e7dcca]">
                 <button
                   onClick={() => setShowMobileFilters(!showMobileFilters)}
                   className="w-full flex items-center justify-between bg-[#f5e6d3] hover:bg-[#e7dcca] px-4 py-2 rounded-lg transition-colors"
                 >
-                  <span className="font-medium text-[#5e3023]">Filters & Categories</span>
+                  <span className="font-medium text-[#5e3023]">
+                    Filters & Categories
+                  </span>
                   <svg
-                    className={`w-5 h-5 transform transition-transform ${showMobileFilters ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 transform transition-transform ${
+                      showMobileFilters ? "rotate-180" : ""
+                    }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
               </div>
 
               {/* Filter Content */}
-              <div className={`${showMobileFilters ? 'block' : 'hidden'} lg:block p-6 space-y-6`}>
-                
+              <div
+                className={`${
+                  showMobileFilters ? "block" : "hidden"
+                } lg:block p-6 space-y-6`}
+              >
                 {/* Quick Stats */}
                 <div className="text-center p-4 bg-[#fff9f5] rounded-lg">
-                  <h3 className="text-lg font-semibold text-[#5e3023] mb-2">Products Found</h3>
-                  <p className="text-2xl font-bold text-[#d3756b]">{totalProducts}</p>
+                  <h3 className="text-lg font-semibold text-[#5e3023] mb-2">
+                    Products Found
+                  </h3>
+                  <p className="text-2xl font-bold text-[#d3756b]">
+                    {totalProducts}
+                  </p>
                 </div>
 
                 {/* Categories Filter */}
                 <div>
-                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">Categories</h3>
+                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">
+                    Categories
+                  </h3>
                   <select
                     name="category_id"
                     value={filters.category_id}
@@ -277,7 +309,10 @@ const HomePage = () => {
                   >
                     <option value="">All Categories</option>
                     {categories.map((category) => (
-                      <option key={category.category_id} value={category.category_id}>
+                      <option
+                        key={category.category_id}
+                        value={category.category_id}
+                      >
                         {category.name}
                       </option>
                     ))}
@@ -287,7 +322,9 @@ const HomePage = () => {
                 {/* Store Filter */}
                 {stores.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-[#5e3023] mb-3">Bakeries</h3>
+                    <h3 className="text-lg font-semibold text-[#5e3023] mb-3">
+                      Bakeries
+                    </h3>
                     <select
                       name="store_id"
                       value={filters.store_id}
@@ -306,7 +343,9 @@ const HomePage = () => {
 
                 {/* Price Range */}
                 <div>
-                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">Price Range</h3>
+                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">
+                    Price Range
+                  </h3>
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <input
@@ -331,7 +370,9 @@ const HomePage = () => {
 
                 {/* Featured Products */}
                 <div>
-                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">Special</h3>
+                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">
+                    Special
+                  </h3>
                   <select
                     name="is_featured"
                     value={filters.is_featured}
@@ -345,7 +386,9 @@ const HomePage = () => {
 
                 {/* Sort Options */}
                 <div>
-                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">Sort By</h3>
+                  <h3 className="text-lg font-semibold text-[#5e3023] mb-3">
+                    Sort By
+                  </h3>
                   <select
                     name="sortBy"
                     value={filters.sortBy}
@@ -374,12 +417,13 @@ const HomePage = () => {
 
           {/* Main Content Area */}
           <main className="flex-1">
-            
             {/* Results Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-[#5e3023]">
-                  {filters.search ? `Search Results for "${filters.search}"` : 'All Products'}
+                  {filters.search
+                    ? `Search Results for "${filters.search}"`
+                    : "All Products"}
                 </h2>
                 <p className="text-[#8c5f53] mt-1">
                   {totalProducts} products found
@@ -399,7 +443,9 @@ const HomePage = () => {
             {error && !loading && (
               <div className="text-center py-12">
                 <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-4 max-w-md mx-auto">
-                  <h3 className="font-semibold mb-2">Oops! Something went wrong</h3>
+                  <h3 className="font-semibold mb-2">
+                    Oops! Something went wrong
+                  </h3>
                   <p className="text-sm">{error}</p>
                 </div>
                 <button
@@ -432,7 +478,8 @@ const HomePage = () => {
                   No products found
                 </h3>
                 <p className="text-[#8c5f53] mb-4">
-                  Try adjusting your search or filters to find what you're looking for.
+                  Try adjusting your search or filters to find what you're
+                  looking for.
                 </p>
                 <button
                   onClick={resetFilters}
@@ -460,10 +507,12 @@ const HomePage = () => {
                           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
                             // Use a more reliable fallback with product name
-                            e.target.src = `https://via.placeholder.com/300x300/f5e6d3/8B4513?text=${encodeURIComponent(product.name || 'Product')}`;
+                            e.target.src = `https://via.placeholder.com/300x300/f5e6d3/8B4513?text=${encodeURIComponent(
+                              product.name || "Product"
+                            )}`;
                           }}
                         />
-                        
+
                         {/* Featured Badge */}
                         {product.is_featured && (
                           <div className="absolute top-2 left-2">
@@ -513,7 +562,9 @@ const HomePage = () => {
 
                         {/* Store and Category Info */}
                         <div className="flex justify-between items-center text-xs text-[#8c5f53]">
-                          <span className="font-medium">{product.store_name}</span>
+                          <span className="font-medium">
+                            {product.store_name}
+                          </span>
                           <span className="bg-[#fff9f5] px-2 py-1 rounded">
                             {product.category_name}
                           </span>
@@ -526,7 +577,9 @@ const HomePage = () => {
                               {product.stock_quantity} in stock
                             </span>
                           ) : (
-                            <span className="text-xs text-red-500">Out of stock</span>
+                            <span className="text-xs text-red-500">
+                              Out of stock
+                            </span>
                           )}
                         </div>
                       </div>
@@ -547,32 +600,35 @@ const HomePage = () => {
                       </button>
 
                       {/* Page Numbers */}
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNumber;
-                        if (totalPages <= 5) {
-                          pageNumber = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNumber = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNumber = totalPages - 4 + i;
-                        } else {
-                          pageNumber = currentPage - 2 + i;
-                        }
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          let pageNumber;
+                          if (totalPages <= 5) {
+                            pageNumber = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNumber = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNumber = totalPages - 4 + i;
+                          } else {
+                            pageNumber = currentPage - 2 + i;
+                          }
 
-                        return (
-                          <button
-                            key={pageNumber}
-                            onClick={() => handlePageChange(pageNumber)}
-                            className={`px-3 py-2 rounded-lg transition-colors ${
-                              currentPage === pageNumber
-                                ? "bg-[#d3756b] text-white"
-                                : "border border-[#e7dcca] bg-white hover:bg-[#f5e6d3]"
-                            }`}
-                          >
-                            {pageNumber}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={pageNumber}
+                              onClick={() => handlePageChange(pageNumber)}
+                              className={`px-3 py-2 rounded-lg transition-colors ${
+                                currentPage === pageNumber
+                                  ? "bg-[#d3756b] text-white"
+                                  : "border border-[#e7dcca] bg-white hover:bg-[#f5e6d3]"
+                              }`}
+                            >
+                              {pageNumber}
+                            </button>
+                          );
+                        }
+                      )}
 
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
