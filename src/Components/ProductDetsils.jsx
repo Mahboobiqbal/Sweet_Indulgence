@@ -125,7 +125,7 @@ const ProductDetails = () => {
 
   return (
     <div className="min-h-screen bg-[#fff9f5] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-[#e7dcca]">
+      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-[#e7dcca] mt-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6 lg:p-10">
           {/* Product Image */}
           <div className="relative">

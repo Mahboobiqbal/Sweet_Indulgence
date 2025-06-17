@@ -103,8 +103,8 @@ const Payment = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fff9f5] py-12 px-4 sm:px-6 lg:px-8 ">
-      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-[#e7dcca]">
+    <div className="min-h-screen bg-[#fff9f5] py-12 px-4 sm:px-6 lg:px-8  ">
+      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-[#e7dcca] mt-20">
         <div className="p-6 lg:p-10">
           <h1 className="text-3xl font-bold text-[#5e3023] mb-8">Checkout</h1>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
