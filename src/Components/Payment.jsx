@@ -78,8 +78,8 @@ const Payment = () => {
 
   if (!order || !order.product_id) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#fff9f5]">
-        <div className="text-center bg-white rounded-xl shadow-md border border-[#e7dcca] p-6 max-w-md">
+      <div className="flex items-center justify-center min-h-screen bg-[#fff9f5]  ">
+        <div className="text-center bg-white rounded-xl shadow-md border border-[#e7dcca] p-6 max-w-md  ">
           <svg
             className="mx-auto h-16 w-16 text-[#e7dcca] mb-4"
             fill="currentColor"
@@ -103,7 +103,7 @@ const Payment = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fff9f5] py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#fff9f5] py-12 px-4 sm:px-6 lg:px-8 ">
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-[#e7dcca]">
         <div className="p-6 lg:p-10">
           <h1 className="text-3xl font-bold text-[#5e3023] mb-8">Checkout</h1>
