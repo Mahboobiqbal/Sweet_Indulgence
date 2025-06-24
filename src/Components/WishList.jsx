@@ -162,30 +162,44 @@ const Wishlist = () => {
         return;
       }
       
-      if (product.stock_quantity <= 0) {
-        toast.error('This product is currently out of stock');
-        return;
-      }
+      console.log('DEBUG: Adding to cart:', product);
       
       // Show loading toast
       const loadingToast = toast.loading("Adding to cart...");
-      
-      // Use the cart service
-      const response = await cartService.addToCart(product.product_id, 1);
-      
-      if (response.success) {
-        toast.dismiss(loadingToast);
-        toast.success(response.message || `${product.name} added to cart!`);
+
+      const response = await fetch('http://localhost:5000/api/cart/items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          product_id: product.product_id,
+          quantity: 1 // Default quantity for wishlist to cart
+        })
+      });
+
+      console.log('DEBUG: Cart response status:', response.status);
+      const data = await response.json();
+      console.log('DEBUG: Cart response data:', data);
+
+      toast.dismiss(loadingToast);
+
+      if (response.ok && data.success) {
+        toast.success(data.message || 'Product added to cart successfully!');
         
-        // Dispatch event to update cart count
-        window.dispatchEvent(new Event('cartUpdated'));
+        // Dispatch event to update cart count in navbar
+        window.dispatchEvent(new CustomEvent('cartUpdated'));
+        
+        // Optionally remove from wishlist after adding to cart
+        // await handleRemoveFromWishlist(product.wishlist_item_id);
       } else {
-        toast.dismiss(loadingToast);
-        toast.error(response.message || 'Failed to add item to cart');
+        toast.error(data.message || 'Failed to add product to cart');
+        console.error('Cart API Error:', data);
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      toast.error(error.message || 'Failed to add item to cart');
+      toast.error('Failed to add product to cart');
     }
   };
 
@@ -290,7 +304,7 @@ const Wishlist = () => {
           </div>
           
           {/* Stats */}
-          <div className="flex items-center gap-6 text-sm text-[#8c5f53]">
+          <div className="flex items-center gap-6 text-sm text-[#8c5f53] mb-3">
             <span>👤 {currentUser?.first_name} {currentUser?.last_name}</span>
             <span>💝 {wishlistItems.length} items saved</span>
           </div>

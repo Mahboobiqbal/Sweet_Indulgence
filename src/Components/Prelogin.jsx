@@ -42,7 +42,7 @@ const PreLoginNavbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
             <Link
-              to="/"
+              to="/home"
               className={`${
                 scrolled ? "text-[#5e3023]" : "text-white"
               } hover:text-[#d3756b] transition-colors`}
@@ -124,7 +124,7 @@ const PreLoginNavbar = () => {
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4">
             <Link
-              to="/"
+              to="/home"
               className={`block py-2 ${
                 scrolled ? "text-[#5e3023]" : "text-white"
               } hover:text-[#d3756b]`}

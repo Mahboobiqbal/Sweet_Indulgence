@@ -89,7 +89,7 @@ const PostLoginNavbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link to="/home" className="flex items-center">
+          <Link to="/" className="flex items-center">
             <img src={BakeHouse} alt="Bake House Logo" className="h-20 w-20" />
           </Link>
 
