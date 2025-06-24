@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from utils.auth import check_password, hash_password
+from database.db import get_cursor, get_db
+from utils.auth import hash_password
 from models.user import User
-from models.supplier import Supplier
+import json
 import uuid
-from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -69,124 +69,182 @@ def register_customer():
 
 @auth_bp.route('/register/supplier', methods=['POST'])
 def register_supplier():
-    """Register a new supplier account"""
-    data = request.json
-    
-    # Validate required fields for user
-    user_required_fields = ['email', 'password', 'first_name', 'last_name']
-    for field in user_required_fields:
-        if field not in data:
-            return jsonify({
-                'success': False,
-                'message': f'Missing required field: {field}'
-            }), 400
-    
-    # Validate required fields for supplier
-    supplier_required_fields = ['business_name', 'business_address', 'business_phone']
-    for field in supplier_required_fields:
-        if field not in data:
-            return jsonify({
-                'success': False,
-                'message': f'Missing required field: {field}'
-            }), 400
-    
-    # Check if user already exists
-    existing_user = User.get_by_email(data['email'])
-    if existing_user:
-        return jsonify({
-            'success': False,
-            'message': 'User with this email already exists'
-        }), 409
-    
+    db = None
     try:
-        # Begin database transaction
-        from database.db import get_db
+        data = request.json
+        
+        print(f"DEBUG: Supplier registration data: {data}")
+        
+        # Validate required fields
+        required_fields = ['first_name', 'last_name', 'email', 'password', 'business_name', 'business_address', 'business_phone']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({
+                    'success': False,
+                    'message': f'Missing required field: {field}'
+                }), 400
+        
+        # Get database connection for manual transaction control
         db = get_db()
         
+        # Start transaction explicitly
+        db.autocommit = False
+        
+        cursor = db.cursor()
+        
         try:
-            # Create user with supplier role
-            user_data = {
-                'email': data['email'],
-                'password': data['password'],
-                'first_name': data['first_name'],
-                'last_name': data['last_name'],
-                'phone': data.get('phone'),
-                'address': data.get('address'),
-                'city': data.get('city'),
-                'role': 'supplier'
+            # Check if email already exists
+            cursor.execute("SELECT email FROM users WHERE email = %s", (data['email'],))
+            if cursor.fetchone():
+                return jsonify({
+                    'success': False,
+                    'message': 'Email already registered'
+                }), 409
+            
+            # Generate IDs
+            user_id = str(uuid.uuid4())
+            supplier_id = str(uuid.uuid4())
+            store_id = str(uuid.uuid4())
+            
+            print(f"DEBUG: Generated IDs - user_id: {user_id}, supplier_id: {supplier_id}, store_id: {store_id}")
+            
+            # Create user account (using correct column name: date_joined)
+            cursor.execute("""
+                INSERT INTO users (
+                    user_id, email, password_hash, first_name, last_name, role, is_active, date_joined
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+            """, (
+                user_id,
+                data['email'],
+                hash_password(data['password']),
+                data['first_name'],
+                data['last_name'],
+                'supplier',
+                True
+            ))
+            
+            print(f"DEBUG: User insert affected {cursor.rowcount} rows")
+            
+            # Create supplier profile (using correct column name: date_registered)
+            cursor.execute("""
+                INSERT INTO suppliers (
+                    supplier_id, user_id, business_name, business_address, business_phone, is_verified, date_registered
+                ) VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            """, (
+                supplier_id,
+                user_id,
+                data['business_name'],
+                data['business_address'],
+                data['business_phone'],
+                False
+            ))
+            
+            print(f"DEBUG: Supplier insert affected {cursor.rowcount} rows")
+            
+            # Create store automatically (using correct column name: date_created)
+            opening_hours_data = {
+                "Monday": "9:00 AM - 6:00 PM",
+                "Tuesday": "9:00 AM - 6:00 PM",
+                "Wednesday": "9:00 AM - 6:00 PM",
+                "Thursday": "9:00 AM - 6:00 PM",
+                "Friday": "9:00 AM - 6:00 PM",
+                "Saturday": "10:00 AM - 4:00 PM",
+                "Sunday": "Closed"
             }
             
-            user_id = User.create(user_data)
+            cursor.execute("""
+                INSERT INTO stores (
+                    store_id, owner_id, name, description, address, city,
+                    phone, opening_hours, is_active, date_created
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            """, (
+                store_id,
+                user_id,
+                data['business_name'],
+                data.get('store_description', f"Welcome to {data['business_name']}! We offer fresh, delicious baked goods made with love."),
+                data['business_address'],
+                data.get('city', 'Not specified'),
+                data['business_phone'],
+                json.dumps(opening_hours_data),
+                True
+            ))
             
-            # Create supplier record
-            supplier_data = {
-                'user_id': user_id,
-                'business_name': data['business_name'],
-                'business_address': data['business_address'],
-                'business_phone': data['business_phone'],
-                'tax_id': data.get('tax_id'),
-                'verification_documents': data.get('verification_documents')
-            }
+            print(f"DEBUG: Store insert affected {cursor.rowcount} rows")
             
-            supplier_id = Supplier.create(supplier_data)
-            
-            # After creating the user account with role='supplier'
-            if user_data['role'] == 'supplier':
-                # Create a default store for the supplier
-                store_id = str(uuid.uuid4())
-                store_name = f"{data['first_name']}'s Bakery"  # Default name
-                
-                with db.cursor() as cursor:
-                    sql = """
-                        INSERT INTO stores (
-                            store_id, owner_id, name, description, is_active, date_created
-                        ) VALUES (%s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(sql, (
-                        store_id, 
-                        user_id, 
-                        store_name,
-                        "My bakery store", 
-                        True, 
-                        datetime.utcnow()
-                    ))
-            
-            # Commit transaction
+            # Commit the transaction
             db.commit()
+            print("DEBUG: Transaction committed successfully")
+            
+            # Now verify the records with fresh queries
+            cursor.execute("SELECT user_id, email, role FROM users WHERE user_id = %s", (user_id,))
+            created_user = cursor.fetchone()
+            print(f"DEBUG: Post-commit user verification: {created_user}")
+            
+            cursor.execute("SELECT supplier_id, user_id, business_name FROM suppliers WHERE user_id = %s", (user_id,))
+            created_supplier = cursor.fetchone()
+            print(f"DEBUG: Post-commit supplier verification: {created_supplier}")
+            
+            cursor.execute("SELECT store_id, owner_id, name FROM stores WHERE owner_id = %s", (user_id,))
+            created_store = cursor.fetchone()
+            print(f"DEBUG: Post-commit store verification: {created_store}")
+            
+            # Close cursor
+            cursor.close()
             
             # Generate JWT token
             access_token = create_access_token(identity=user_id)
             
             return jsonify({
                 'success': True,
-                'message': 'Supplier account registered successfully',
-                'token': access_token,
+                'message': 'Supplier account and store created successfully!',
+                'access_token': access_token,
                 'user': {
                     'user_id': user_id,
                     'email': data['email'],
                     'first_name': data['first_name'],
                     'last_name': data['last_name'],
                     'role': 'supplier',
-                    'business_name': data['business_name']
+                    'business_name': data['business_name'],
+                    'is_verified': False
+                },
+                'store': {
+                    'store_id': store_id,
+                    'name': data['business_name'],
+                    'is_active': True
                 }
             }), 201
             
         except Exception as e:
-            # Rollback transaction on error
+            # Rollback on error
             db.rollback()
+            cursor.close()
+            print(f"Error in supplier registration transaction: {e}")
+            import traceback
+            traceback.print_exc()
             raise e
             
     except Exception as e:
+        print(f"Error in register_supplier: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'message': 'Supplier registration failed',
-            'error': str(e)
+            'message': f'Registration failed: {str(e)}'
         }), 500
+    finally:
+        # Clean up connection
+        if db:
+            try:
+                db.close()
+            except:
+                pass
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """Log in a user (customer or supplier)"""
     data = request.json
+    
+    print(f"DEBUG: Login attempt for email: {data.get('email')}")
     
     # Validate required fields
     if 'email' not in data or 'password' not in data:
@@ -196,8 +254,6 @@ def login():
         }), 400
     
     # Check if user exists
-    from database.db import get_cursor
-    
     with get_cursor() as cursor:
         sql = """
             SELECT user_id, email, first_name, last_name, password_hash, 
@@ -207,8 +263,10 @@ def login():
         """
         cursor.execute(sql, (data['email'],))
         user = cursor.fetchone()
+        print(f"DEBUG: User found in login: {user}")
     
     if not user:
+        print("DEBUG: User not found")
         return jsonify({
             'success': False,
             'message': 'Invalid email or password'
@@ -216,6 +274,7 @@ def login():
     
     # Check if account is active
     if not user['is_active']:
+        print("DEBUG: User account is not active")
         return jsonify({
             'success': False,
             'message': 'Account is deactivated'
@@ -224,24 +283,24 @@ def login():
     # Verify password
     from utils.auth import check_password
     
-    if not check_password(data['password'], user['password_hash']):
+    password_valid = check_password(data['password'], user['password_hash'])
+    print(f"DEBUG: Password validation result: {password_valid}")
+    
+    if not password_valid:
+        print("DEBUG: Password validation failed")
         return jsonify({
             'success': False,
             'message': 'Invalid email or password'
         }), 401
     
     # Update last login
-    from database.db import get_db
-    
-    with get_db() as conn:
-        with conn.cursor() as cursor:
-            sql = "UPDATE users SET last_login = NOW() WHERE user_id = %s"
-            cursor.execute(sql, (user['user_id'],))
-        conn.commit()
+    db = get_db()
+    with get_cursor() as cursor:
+        sql = "UPDATE users SET last_login = NOW() WHERE user_id = %s"
+        cursor.execute(sql, (user['user_id'],))
+    db.commit()
     
     # Generate JWT token
-    from flask_jwt_extended import create_access_token
-    
     access_token = create_access_token(identity=user['user_id'])
     
     # Build response
@@ -274,6 +333,7 @@ def login():
             response_data['user']['business_name'] = supplier['business_name']
             response_data['user']['is_verified'] = supplier['is_verified']
     
+    print(f"DEBUG: Login successful for user: {user['user_id']}")
     return jsonify(response_data), 200
 
 @auth_bp.route('/verify-token', methods=['GET'])
@@ -283,8 +343,6 @@ def verify_token():
     user_id = get_jwt_identity()
     
     # Get user details
-    from database.db import get_cursor
-    
     with get_cursor() as cursor:
         sql = """
             SELECT user_id, email, first_name, last_name, role, loyalty_points
@@ -395,3 +453,35 @@ def reset_password():
         'success': True,
         'message': 'Password has been reset successfully'
     }), 200
+
+# Debug endpoint to check if user exists
+@auth_bp.route('/debug/check-user/<email>', methods=['GET'])
+def debug_check_user(email):
+    """Debug endpoint to check if user exists"""
+    try:
+        with get_cursor() as cursor:
+            cursor.execute("SELECT user_id, email, role, is_active FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            
+            if user:
+                return jsonify({
+                    'success': True,
+                    'user_exists': True,
+                    'user': {
+                        'user_id': user['user_id'],
+                        'email': user['email'],
+                        'role': user['role'],
+                        'is_active': user['is_active']
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'user_exists': False,
+                    'user': None
+                })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })

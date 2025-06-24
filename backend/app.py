@@ -1,7 +1,7 @@
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from database.db import init_app, test_connection
+from database.db import init_app, test_connection, close_db
 from routes.auth import auth_bp
 from routes.users import users_bp
 from routes.stores import stores_bp
@@ -70,6 +70,9 @@ def create_app():
                 'error': str(e)
             }, 500
     
+    # Register the function to close the database connection
+    app.teardown_appcontext(close_db)
+
     return app
 
 if __name__ == '__main__':

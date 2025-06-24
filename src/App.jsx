@@ -56,41 +56,20 @@ const PublicRoute = ({ children }) => {
 
 // App Routes Component (Wrapped by AuthProvider)
 const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <>
       <Navbar />
       <Routes>
-        {/* Public Routes - redirect to /home if authenticated */}
-        <Route
-          path="/"
-          element={
-            <PublicRoute>
-              <Home />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <PublicRoute>
-              <SignUpPage />
-            </PublicRoute>
-          }
-        />
-
-        {/* Semi-public routes (available to all) */}
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
-
+        
         {/* Protected Routes - Require Authentication */}
         <Route
           path="/home"
@@ -157,7 +136,7 @@ const AppRoutes = () => {
               <Cart />
             </ProtectedRoute>
           }
-          />
+        />
 
         {/* Supplier-only Routes */}
         <Route
@@ -209,8 +188,13 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Catch all route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch all route - redirect based on auth status */}
+        <Route 
+          path="*" 
+          element={
+            <Navigate to={isAuthenticated ? "/home" : "/"} replace />
+          } 
+        />
       </Routes>
       <Footer />
       <ToastContainer />

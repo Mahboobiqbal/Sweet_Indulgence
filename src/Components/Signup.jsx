@@ -17,6 +17,8 @@ const SignUpPage = () => {
     business_name: "",
     business_address: "",
     business_phone: "",
+    city: "",
+    store_description: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -58,6 +60,7 @@ const SignUpPage = () => {
       if (!formData.business_name.trim()) newErrors.business_name = "Business name is required";
       if (!formData.business_address.trim()) newErrors.business_address = "Business address is required";
       if (!formData.business_phone.trim()) newErrors.business_phone = "Phone number is required";
+      if (!formData.city.trim()) newErrors.city = "City is required";
     }
     
     setErrors(newErrors);
@@ -88,6 +91,8 @@ const SignUpPage = () => {
         userData.business_name = formData.business_name;
         userData.business_address = formData.business_address;
         userData.business_phone = formData.business_phone;
+        userData.city = formData.city;
+        userData.store_description = formData.store_description;
       }
       
       // Call appropriate API endpoint based on role
@@ -98,13 +103,17 @@ const SignUpPage = () => {
         response = await authService.registerCustomer(userData);
       }
       
-      toast.success("Registration successful!");
-      
-      // Navigate to the appropriate page
       if (role === "supplier") {
-        navigate("/create-store");
+        toast.success("Supplier account and store created successfully!");
       } else {
-        navigate("/");
+        toast.success("Registration successful!");
+      }
+      
+      // Navigate based on role
+      if (role === "supplier") {
+        navigate("/supplier-dashboard");
+      } else {
+        navigate("/home");
       }
       
     } catch (error) {
@@ -125,7 +134,7 @@ const SignUpPage = () => {
             Create Account
           </h2>
           <p className="text-[#8c5f53] mt-2">
-            Join our sweet community today
+            {role === "supplier" ? "Start your bakery business today" : "Join our sweet community today"}
           </p>
         </div>
 
@@ -159,10 +168,7 @@ const SignUpPage = () => {
         <form onSubmit={handleSignUp} className="p-8">
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label
-                htmlFor="first_name"
-                className="block text-[#5e3023] font-medium mb-2"
-              >
+              <label htmlFor="first_name" className="block text-[#5e3023] font-medium mb-2">
                 First Name
               </label>
               <input
@@ -181,10 +187,7 @@ const SignUpPage = () => {
               )}
             </div>
             <div>
-              <label
-                htmlFor="last_name"
-                className="block text-[#5e3023] font-medium mb-2"
-              >
+              <label htmlFor="last_name" className="block text-[#5e3023] font-medium mb-2">
                 Last Name
               </label>
               <input
@@ -207,11 +210,8 @@ const SignUpPage = () => {
           {role === "supplier" && (
             <>
               <div className="mb-6">
-                <label
-                  htmlFor="business_name"
-                  className="block text-[#5e3023] font-medium mb-2"
-                >
-                  Business Name
+                <label htmlFor="business_name" className="block text-[#5e3023] font-medium mb-2">
+                  Business Name / Store Name
                 </label>
                 <input
                   type="text"
@@ -222,7 +222,7 @@ const SignUpPage = () => {
                   className={`w-full px-4 py-3 rounded-full border ${
                     errors.business_name ? 'border-red-500' : 'border-[#e7dcca]'
                   } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
-                  placeholder="Your bakery name"
+                  placeholder="e.g., Sweet Delights Bakery"
                 />
                 {errors.business_name && (
                   <p className="text-red-500 text-sm mt-1">{errors.business_name}</p>
@@ -230,11 +230,8 @@ const SignUpPage = () => {
               </div>
 
               <div className="mb-6">
-                <label
-                  htmlFor="business_address"
-                  className="block text-[#5e3023] font-medium mb-2"
-                >
-                  Business Address
+                <label htmlFor="business_address" className="block text-[#5e3023] font-medium mb-2">
+                  Store Address
                 </label>
                 <input
                   type="text"
@@ -245,43 +242,73 @@ const SignUpPage = () => {
                   className={`w-full px-4 py-3 rounded-full border ${
                     errors.business_address ? 'border-red-500' : 'border-[#e7dcca]'
                   } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
-                  placeholder="Your business address"
+                  placeholder="Complete store address"
                 />
                 {errors.business_address && (
                   <p className="text-red-500 text-sm mt-1">{errors.business_address}</p>
                 )}
               </div>
 
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label htmlFor="city" className="block text-[#5e3023] font-medium mb-2">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 rounded-full border ${
+                      errors.city ? 'border-red-500' : 'border-[#e7dcca]'
+                    } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
+                    placeholder="City"
+                  />
+                  {errors.city && (
+                    <p className="text-red-500 text-sm mt-1">{errors.city}</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="business_phone" className="block text-[#5e3023] font-medium mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="business_phone"
+                    name="business_phone"
+                    value={formData.business_phone}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 rounded-full border ${
+                      errors.business_phone ? 'border-red-500' : 'border-[#e7dcca]'
+                    } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
+                    placeholder="Contact number"
+                  />
+                  {errors.business_phone && (
+                    <p className="text-red-500 text-sm mt-1">{errors.business_phone}</p>
+                  )}
+                </div>
+              </div>
+
               <div className="mb-6">
-                <label
-                  htmlFor="business_phone"
-                  className="block text-[#5e3023] font-medium mb-2"
-                >
-                  Phone Number
+                <label htmlFor="store_description" className="block text-[#5e3023] font-medium mb-2">
+                  Store Description (Optional)
                 </label>
-                <input
-                  type="tel"
-                  id="business_phone"
-                  name="business_phone"
-                  value={formData.business_phone}
+                <textarea
+                  id="store_description"
+                  name="store_description"
+                  value={formData.store_description}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-full border ${
-                    errors.business_phone ? 'border-red-500' : 'border-[#e7dcca]'
-                  } focus:outline-none focus:ring-2 focus:ring-[#d3756b]`}
-                  placeholder="Your contact number"
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] resize-none"
+                  placeholder="Describe your bakery and specialties..."
                 />
-                {errors.business_phone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.business_phone}</p>
-                )}
               </div>
             </>
           )}
 
           <div className="mb-6">
-            <label
-              htmlFor="email"
-              className="block text-[#5e3023] font-medium mb-2"
-            >
+            <label htmlFor="email" className="block text-[#5e3023] font-medium mb-2">
               Email Address
             </label>
             <input
@@ -301,10 +328,7 @@ const SignUpPage = () => {
           </div>
 
           <div className="mb-6">
-            <label
-              htmlFor="password"
-              className="block text-[#5e3023] font-medium mb-2"
-            >
+            <label htmlFor="password" className="block text-[#5e3023] font-medium mb-2">
               Password
             </label>
             <input
@@ -324,10 +348,7 @@ const SignUpPage = () => {
           </div>
 
           <div className="mb-6">
-            <label
-              htmlFor="confirmPassword"
-              className="block text-[#5e3023] font-medium mb-2"
-            >
+            <label htmlFor="confirmPassword" className="block text-[#5e3023] font-medium mb-2">
               Confirm Password
             </label>
             <input
@@ -362,14 +383,27 @@ const SignUpPage = () => {
               className={`ml-2 ${errors.agreeTerms ? 'text-red-500' : 'text-[#8c5f53]'}`}
             >
               I agree to the{" "}
-              <a
-                href="#"
-                className="text-[#d3756b] hover:text-[#c25d52]"
-              >
+              <a href="#" className="text-[#d3756b] hover:text-[#c25d52]">
                 Terms and Conditions
               </a>
             </label>
           </div>
+
+          {role === "supplier" && (
+            <div className="mb-6 p-4 bg-[#fff9f5] rounded-lg border border-[#e7dcca]">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-[#d3756b] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <h4 className="text-sm font-medium text-[#5e3023] mb-1">Store Creation</h4>
+                  <p className="text-sm text-[#8c5f53]">
+                    Your store will be created automatically when you register. You can update store details and add products after registration.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -384,10 +418,10 @@ const SignUpPage = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Processing...
+                Creating Account...
               </span>
             ) : (
-              role === "supplier" ? "CREATE SUPPLIER ACCOUNT" : "SIGN UP"
+              role === "supplier" ? "CREATE STORE & ACCOUNT" : "SIGN UP"
             )}
           </button>
 

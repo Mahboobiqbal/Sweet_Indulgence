@@ -2,145 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-// Store creation component
-const CreateStore = () => {
-  const [isCreating, setIsCreating] = useState(false);
-  const [storeName, setStoreName] = useState("My Bakery Shop");
-  const [storeDescription, setStoreDescription] = useState("My bakery store");
-  const [storeAddress, setStoreAddress] = useState("");
-  const [storeCity, setStoreCity] = useState("");
-  const [storePhone, setStorePhone] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  
-  const handleCreateStore = async () => {
-    try {
-      setIsCreating(true);
-      setError("");
-      
-      const response = await fetch('http://localhost:5000/api/stores', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          name: storeName,
-          description: storeDescription,
-          address: storeAddress,
-          city: storeCity,
-          phone: storePhone
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setSuccess("Store created successfully! Refreshing...");
-        setTimeout(() => window.location.reload(), 2000);
-      } else {
-        setError(data.message || "Failed to create store");
-      }
-    } catch (err) {
-      setError("An error occurred while creating the store");
-    } finally {
-      setIsCreating(false);
-    }
-  };
-  
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h1 className="text-2xl font-bold text-[#5e3023] mb-4">Create Your Store</h1>
-      <p className="text-[#8c5f53] mb-6">
-        You need to create a store before you can add products.
-      </p>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {success}
-        </div>
-      )}
-      
-      <div className="mb-4">
-        <label className="block text-[#5e3023] text-sm font-bold mb-2">
-          Store Name
-        </label>
-        <input
-          type="text"
-          className="border rounded w-full py-2 px-3 text-gray-700"
-          value={storeName}
-          onChange={(e) => setStoreName(e.target.value)}
-        />
-      </div>
-      
-      <div className="mb-4">
-        <label className="block text-[#5e3023] text-sm font-bold mb-2">
-          Description
-        </label>
-        <textarea
-          className="border rounded w-full py-2 px-3 text-gray-700"
-          value={storeDescription}
-          onChange={(e) => setStoreDescription(e.target.value)}
-          rows="3"
-        />
-      </div>
-      
-      <div className="mb-4">
-        <label className="block text-[#5e3023] text-sm font-bold mb-2">
-          Store Address
-        </label>
-        <input
-          type="text"
-          className="border rounded w-full py-2 px-3 text-gray-700"
-          value={storeAddress}
-          onChange={(e) => setStoreAddress(e.target.value)}
-          placeholder="123 Main St"
-        />
-      </div>
-      
-      <div className="mb-4">
-        <label className="block text-[#5e3023] text-sm font-bold mb-2">
-          City
-        </label>
-        <input
-          type="text"
-          className="border rounded w-full py-2 px-3 text-gray-700"
-          value={storeCity}
-          onChange={(e) => setStoreCity(e.target.value)}
-          placeholder="Your City"
-        />
-      </div>
-      
-      <div className="mb-4">
-        <label className="block text-[#5e3023] text-sm font-bold mb-2">
-          Phone
-        </label>
-        <input
-          type="text"
-          className="border rounded w-full py-2 px-3 text-gray-700"
-          value={storePhone}
-          onChange={(e) => setStorePhone(e.target.value)}
-          placeholder="555-123-4567"
-        />
-      </div>
-      
-      <button
-        onClick={handleCreateStore}
-        disabled={isCreating}
-        className="bg-[#d3756b] hover:bg-[#c25d52] text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-      >
-        {isCreating ? "Creating..." : "Create Store"}
-      </button>
-    </div>
-  );
-};
-
 // Supplier dashboard component
 const SupplierDashboard = () => {
     const { currentUser, isAuthenticated } = useAuth();
@@ -193,7 +54,8 @@ const SupplierDashboard = () => {
           
           if (!response.ok) {
             console.error("Store check error status:", response.status);
-            setHasStore(false);
+            // For new users, we should assume they have a store since it's created during signup
+            setHasStore(true);
             return;
           }
           
@@ -207,7 +69,8 @@ const SupplierDashboard = () => {
           
         } catch (err) {
           console.error("Error checking store:", err);
-          setHasStore(false);
+          // For new users, assume they have a store
+          setHasStore(true);
         } finally {
           setIsLoading(false);
         }
@@ -265,6 +128,10 @@ const SupplierDashboard = () => {
         navigate('/store-settings');
     };
 
+    const handleCreateStore = () => {
+        navigate('/create-store');
+    };
+
     // Format currency
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
@@ -293,8 +160,51 @@ const SupplierDashboard = () => {
       );
     }
 
+    // Since stores are created during signup, this case should rarely happen
+    // But we'll keep it as a fallback
     if (!hasStore) {
-      return <CreateStore />;
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#fff9f5] to-[#f5e6d3] py-8 px-4 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-[#e7dcca] max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-[#d3756b] to-[#c25d52] rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            
+            <h1 className="text-2xl font-bold text-[#5e3023] mb-4">Store Setup Issue</h1>
+            <p className="text-[#8c5f53] mb-6">
+              It looks like there was an issue setting up your store. Don't worry, let's get this fixed!
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={handleCreateStore}
+                className="w-full bg-gradient-to-r from-[#d3756b] to-[#c25d52] text-white font-bold py-3 px-6 rounded-lg hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Create Store
+              </button>
+              
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full bg-gradient-to-r from-[#e7dcca] to-[#d3c2a8] text-[#5e3023] font-medium py-3 px-6 rounded-lg hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+              >
+                Refresh Page
+              </button>
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-[#e7dcca] text-left">
+              <h3 className="text-sm font-medium text-[#5e3023] mb-2">Need help?</h3>
+              <p className="text-sm text-[#8c5f53]">
+                If you continue to have issues, please contact our support team and we'll help you get your store set up.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
     }
 
     return (
@@ -327,7 +237,8 @@ const SupplierDashboard = () => {
                         <div className="hidden md:block">
                             <div className="w-16 h-16 bg-gradient-to-br from-[#d3756b] to-[#c25d52] rounded-full flex items-center justify-center">
                                 <span className="text-white text-2xl font-bold">
-                                    {(storeInfo?.name || currentUser?.business_name || currentUser?.first_name || 'U').charAt(0).toUpperCase()}
+                                    {(storeInfo?.name || currentUser?.business_name || currentUser?.first_name || 'U').charAt(0).toUpperCase()
+}
                                 </span>
                             </div>
                         </div>

@@ -120,7 +120,8 @@ const StoreSettingsPage = () => {
   const createStore = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/stores/stores', {
+      // Fix the URL - remove duplicate 'stores'
+      const response = await fetch('http://localhost:5000/api/stores/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

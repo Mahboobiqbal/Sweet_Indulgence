@@ -585,3 +585,43 @@ def get_product_stats():
             'success': False,
             'message': f'Error fetching product stats: {str(e)}'
         }), 500
+
+
+@products_bp.route('/featured-products', methods=['GET'])
+@jwt_required()
+def getFeaturedProducts():
+    """Get featured products for the current user's store"""
+    try:
+        user_id = get_jwt_identity()
+
+        with get_cursor() as cursor:
+            # Get the user's store first
+            cursor.execute("SELECT store_id FROM stores WHERE owner_id = %s AND is_active = true", (user_id,))
+            store = cursor.fetchone()
+
+            if not store:
+                return jsonify({
+                    'success': True,
+                    'featured_products': []
+                }), 200
+
+            store_id = store['store_id']
+
+            # Get featured products
+            cursor.execute("""
+                SELECT * FROM products
+                WHERE store_id = %s AND is_featured = true AND is_active = true
+            """, (store_id,))
+            featured_products = cursor.fetchall()
+
+            return jsonify({
+                'success': True,
+                'featured_products': featured_products
+            }), 200
+
+    except Exception as e:
+        print(f"Error fetching featured products: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error fetching featured products: {str(e)}'
+        }), 500
