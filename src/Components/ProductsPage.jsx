@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast, ToastContainer } from 'react-toastify';
+import { cartService } from '../services/cartService';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ProductsPage = () => {
   // State variables
@@ -10,6 +13,8 @@ const ProductsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
+
+  const navigate = useNavigate();
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -48,7 +53,7 @@ const ProductsPage = () => {
 
         params.append("sort", sortMapping[filters.sortBy] || "date_desc");
 
-        // Make API request - Fixed URL with trailing slash
+        // Make API request
         const response = await fetch(
           `http://localhost:5000/api/products?${params.toString()}`
         );
@@ -81,7 +86,6 @@ const ProductsPage = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        // Fixed URL with trailing slash
         const response = await fetch("http://localhost:5000/api/categories");
 
         if (!response.ok) {
@@ -160,12 +164,40 @@ const ProductsPage = () => {
   };
 
   // Add to cart handler
-  const handleAddToCart = (product) => {
-    const success = addToCart(product, 1);
-    if (success) {
-      toast.success(`${product.name} added to cart!`);
-    } else {
-      toast.error("Failed to add item to cart");
+  const handleAddToCart = async (product) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to add items to cart");
+        navigate("/login");
+        return;
+      }
+
+      // Check if product is in stock
+      if (product.stock_quantity <= 0) {
+        toast.error("Product is out of stock");
+        return;
+      }
+
+      // Show loading toast
+      const loadingToast = toast.loading("Adding to cart...");
+
+      // Add to cart using the service
+      const response = await cartService.addToCart(product.product_id, 1);
+
+      if (response.success) {
+        toast.dismiss(loadingToast);
+        toast.success(response.message || `${product.name} added to cart!`);
+        
+        // You can also dispatch an event or update a global cart state here
+        window.dispatchEvent(new Event('cartUpdated'));
+      } else {
+        toast.dismiss(loadingToast);
+        toast.error(response.message || "Failed to add item to cart");
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error(error.message || "Failed to add item to cart");
     }
   };
 
@@ -205,6 +237,18 @@ const ProductsPage = () => {
 
   return (
     <div className="min-h-screen bg-[#fff9f5] py-12 px-4">
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+      
       <div className="max-w-7xl mx-auto mt-10">
         {/* Page Header */}
         <div className="text-center mb-10">
@@ -363,14 +407,13 @@ const ProductsPage = () => {
         {/* Products Grid */}
         {!loading && !error && products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {/* Replace the existing product cards with this updated version */}
             {products.map((product) => (
               <div
                 key={product.product_id}
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
               >
                 <Link
-                  to={`/product/${product.id}`}
+                  to={`/product/${product.product_id}`}
                   className="block"
                   style={{ color: "#5e3023" }}
                 >
@@ -387,7 +430,7 @@ const ProductsPage = () => {
 
                 <div className="p-4">
                   <Link
-                    to={`/product/${product.id}`}
+                    to={`/product/${product.product_id}`}
                     style={{ color: "#5e3023" }}
                     className="hover:underline"
                   >
@@ -439,7 +482,7 @@ const ProductsPage = () => {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons
                   <div className="flex gap-2 mt-auto">
                     <button
                       onClick={(e) => {
@@ -477,7 +520,7 @@ const ProductsPage = () => {
                         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                       </svg>
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             ))}

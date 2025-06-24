@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { addToCart } from "../utils/cartUtils";
+import { cartService } from "../services/cartService";
 import { toast } from 'react-toastify';
 
 const Wishlist = () => {
@@ -24,21 +24,33 @@ const Wishlist = () => {
         setError(null);
         
         const token = localStorage.getItem('token');
+        console.log('DEBUG: Fetching wishlist with token:', token ? 'present' : 'missing');
+        
+        // Try without trailing slash first
         const response = await fetch('http://localhost:5000/api/wishlist', {
+          method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
         
+        console.log('DEBUG: Wishlist response status:', response.status);
+        console.log('DEBUG: Wishlist response ok:', response.ok);
+        console.log('DEBUG: Response URL:', response.url);
+        
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorText = await response.text();
+          console.log('DEBUG: Error response text:', errorText);
+          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
+        console.log('DEBUG: Wishlist data received:', data);
         
         if (data.success) {
           setWishlistItems(data.items || []);
+          console.log('DEBUG: Set wishlist items:', data.items?.length || 0);
         } else {
           throw new Error(data.message || 'Failed to fetch wishlist');
         }
@@ -117,17 +129,39 @@ const Wishlist = () => {
     }
   };
 
-  const handleAddToCart = (product) => {
-    if (product.stock_quantity <= 0) {
-      toast.error('This product is currently out of stock');
-      return;
-    }
-    
-    const success = addToCart(product, 1);
-    if (success) {
-      toast.success(`${product.name} added to cart!`);
-    } else {
-      toast.error('Failed to add item to cart');
+  const handleAddToCart = async (product) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please login to add items to cart');
+        navigate('/login');
+        return;
+      }
+      
+      if (product.stock_quantity <= 0) {
+        toast.error('This product is currently out of stock');
+        return;
+      }
+      
+      // Show loading toast
+      const loadingToast = toast.loading("Adding to cart...");
+      
+      // Use the cart service
+      const response = await cartService.addToCart(product.product_id, 1);
+      
+      if (response.success) {
+        toast.dismiss(loadingToast);
+        toast.success(response.message || `${product.name} added to cart!`);
+        
+        // Dispatch event to update cart count
+        window.dispatchEvent(new Event('cartUpdated'));
+      } else {
+        toast.dismiss(loadingToast);
+        toast.error(response.message || 'Failed to add item to cart');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error(error.message || 'Failed to add item to cart');
     }
   };
 

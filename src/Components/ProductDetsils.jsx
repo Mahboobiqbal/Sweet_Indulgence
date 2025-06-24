@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { addToCart } from "../utils/cartUtils";
+import { cartService } from "../services/cartService";
 import { toast } from 'react-toastify';
 
 const ProductDetails = () => {
@@ -13,18 +13,17 @@ const ProductDetails = () => {
 
   // Helper function to get product image URL
   const getProductImageUrl = (product) => {
-    if (!product) return "/placeholder-product.jpg";
-    
+    // Check if product has image_url (from primary image in product_images table)
     if (product.image_url) {
-      // If it's a full URL, use it directly
-      if (product.image_url.startsWith('http')) {
-        return product.image_url;
+      // If it's a relative path, make it absolute
+      if (product.image_url.startsWith("/uploads/")) {
+        return `http://localhost:5000${product.image_url}`;
       }
-      // If it's a relative path, prepend the base URL
-      return `http://localhost:5000${product.image_url}`;
+      return product.image_url;
     }
-    
-    return "/placeholder-product.jpg";
+
+    // Fallback to placeholder
+    return "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
   };
 
   const formatPrice = (price) => {
@@ -59,19 +58,41 @@ const ProductDetails = () => {
       });
   }, [productId]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
     
-    if (product.stock_quantity <= 0) {
-      toast.error('This product is currently out of stock');
-      return;
-    }
-    
-    const success = addToCart(product, quantity);
-    if (success) {
-      toast.success(`${quantity} ${product.name}(s) added to cart!`);
-    } else {
-      toast.error('Failed to add item to cart');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please login to add items to cart');
+        navigate('/login');
+        return;
+      }
+      
+      if (product.stock_quantity <= 0) {
+        toast.error('This product is currently out of stock');
+        return;
+      }
+      
+      // Show loading toast
+      const loadingToast = toast.loading("Adding to cart...");
+      
+      // Use the cart service
+      const response = await cartService.addToCart(product.product_id, quantity);
+      
+      if (response.success) {
+        toast.dismiss(loadingToast);
+        toast.success(response.message || `${quantity} ${product.name}(s) added to cart!`);
+        
+        // Dispatch event to update cart count
+        window.dispatchEvent(new Event('cartUpdated'));
+      } else {
+        toast.dismiss(loadingToast);
+        toast.error(response.message || 'Failed to add item to cart');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error(error.message || 'Failed to add item to cart');
     }
   };
 
@@ -86,6 +107,9 @@ const ProductDetails = () => {
         return;
       }
       
+      // Show loading toast
+      const loadingToast = toast.loading("Adding to wishlist...");
+      
       const response = await fetch('http://localhost:5000/api/wishlist/add', {
         method: 'POST',
         headers: {
@@ -99,14 +123,22 @@ const ProductDetails = () => {
       
       const data = await response.json();
       
+      toast.dismiss(loadingToast);
+      
       if (response.ok && data.success) {
-        toast.success('Product added to wishlist!');
+        if (data.already_exists) {
+          toast.info(data.message || 'Product is already in your wishlist!');
+        } else {
+          toast.success(data.message || 'Product added to wishlist!');
+        }
         // Dispatch event to update wishlist count in navbar
         window.dispatchEvent(new CustomEvent('wishlistUpdated'));
       } else {
         toast.error(data.message || 'Failed to add to wishlist');
+        console.error('Wishlist API Error:', data);
       }
     } catch (error) {
+      toast.dismiss(loadingToast);
       console.error('Error adding to wishlist:', error);
       toast.error('Failed to add to wishlist');
     }
