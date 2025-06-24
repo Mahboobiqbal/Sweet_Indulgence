@@ -71,8 +71,29 @@ const Payment = () => {
     e.preventDefault();
     if (validateForm()) {
       console.log("Payment submitted:", { order, formData });
-      alert("Payment successful! Thank you for your order.");
-      navigate("/"); // Redirect to home page after success
+      // Here you would typically send the payment data to your backend
+      // so lets send
+      fetch("http://localhost:5000/api/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ order, ...formData }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert("Payment successful! Thank you for your order.");
+            navigate("orders"); // Redirect to orders page after success
+          } else {
+            alert("Payment failed. Please try again.");
+          }
+        })
+        .catch((error) => {
+          console.error("Payment error:", error);
+          alert("An error occurred while processing your payment.");
+        });
     }
   };
 

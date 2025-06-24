@@ -101,7 +101,19 @@ const Wishlist = () => {
 
   const handleRemoveFromWishlist = async (itemId) => {
     try {
+      console.log('DEBUG: Starting remove for item ID:', itemId);
+      
       const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please login to remove items from wishlist');
+        return;
+      }
+      
+      // Show loading toast
+      const loadingToast = toast.loading("Removing from wishlist...");
+      
+      console.log('DEBUG: Making DELETE request to:', `http://localhost:5000/api/wishlist/remove/${itemId}`);
+      
       const response = await fetch(`http://localhost:5000/api/wishlist/remove/${itemId}`, {
         method: 'DELETE',
         headers: {
@@ -110,16 +122,28 @@ const Wishlist = () => {
         }
       });
       
+      console.log('DEBUG: Remove response status:', response.status);
+      console.log('DEBUG: Remove response ok:', response.ok);
+      
       const data = await response.json();
+      console.log('DEBUG: Remove response data:', data);
+      
+      toast.dismiss(loadingToast);
       
       if (response.ok && data.success) {
-        // Update local state
-        setWishlistItems(prev => prev.filter(item => item.wishlist_item_id !== itemId));
-        toast.success('Item removed from wishlist');
+        // Update local state - remove the item from the list
+        setWishlistItems(prev => {
+          const updated = prev.filter(item => item.wishlist_item_id !== itemId);
+          console.log('DEBUG: Updated wishlist items count:', updated.length);
+          return updated;
+        });
+        
+        toast.success(data.message || 'Item removed from wishlist');
         
         // Dispatch event to update navbar count
         window.dispatchEvent(new CustomEvent('wishlistUpdated'));
       } else {
+        console.error('DEBUG: Remove failed with data:', data);
         toast.error(data.message || 'Failed to remove item from wishlist');
       }
       
@@ -323,149 +347,174 @@ const Wishlist = () => {
         {/* Wishlist Items */}
         {!loading && !error && wishlistItems.length > 0 && (
           <div className="space-y-4">
-            {wishlistItems.map((item) => (
-              <div
-                key={item.wishlist_item_id}
-                className="bg-white rounded-xl shadow-md border border-[#e7dcca] overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                <div className="flex flex-col md:flex-row">
-                  
-                  {/* Product Image */}
-                  <div className="md:w-64 h-48 md:h-auto relative">
-                    <img
-                      src={getProductImageUrl(item)}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.src = '/placeholder-product.jpg';
-                      }}
-                    />
+            {/* Temporary test button - remove after testing */}
+            <div className="bg-yellow-100 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-2">Debug: Test remove function</p>
+              {wishlistItems.map(item => (
+                <button
+                  key={item.wishlist_item_id}
+                  onClick={() => {
+                    console.log('TEST: Removing item:', item.wishlist_item_id);
+                    handleRemoveFromWishlist(item.wishlist_item_id);
+                  }}
+                  className="bg-red-500 text-white px-3 py-1 rounded mr-2 text-sm"
+                >
+                  Test Remove {item.name.substring(0, 20)}...
+                </button>
+              ))}
+            </div>
+            
+            {wishlistItems.map((item) => {
+              console.log('DEBUG: Rendering item with ID:', item.wishlist_item_id);
+              return (
+                <div
+                  key={item.wishlist_item_id}
+                  className="bg-white rounded-xl shadow-md border border-[#e7dcca] overflow-hidden hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex flex-col md:flex-row">
                     
-                    {/* Featured Badge */}
-                    {item.is_featured && (
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-[#d3756b] text-white text-xs px-2 py-1 rounded-full font-medium">
-                          ⭐ Featured
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Sale Badge */}
-                    {item.sale_price && (
-                      <div className="absolute top-2 right-2">
-                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                          🏷️ Sale
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Product Details */}
-                  <div className="flex-1 p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-[#5e3023] mb-2">
-                          {item.name}
-                        </h3>
-                        <p className="text-[#8c5f53] mb-3 line-clamp-2">
-                          {item.description}
-                        </p>
-                        
-                        {/* Store and Category Info */}
-                        <div className="flex items-center gap-4 text-sm text-[#8c5f53] mb-3">
-                          <span className="flex items-center gap-1">
-                            🏪 {item.store_name}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            📂 {item.category_name}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            📅 Added {formatDate(item.date_added)}
+                    {/* Product Image */}
+                    <div className="md:w-64 h-48 md:h-auto relative">
+                      <img
+                        src={getProductImageUrl(item)}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = '/placeholder-product.jpg';
+                        }}
+                      />
+                      
+                      {/* Featured Badge */}
+                      {item.is_featured && (
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-[#d3756b] text-white text-xs px-2 py-1 rounded-full font-medium">
+                            ⭐ Featured
                           </span>
                         </div>
-                      </div>
+                      )}
 
-                      {/* Remove Button */}
-                      <button
-                        onClick={() => handleRemoveFromWishlist(item.wishlist_item_id)}
-                        className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors"
-                        title="Remove from wishlist"
-                      >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                        </svg>
-                      </button>
+                      {/* Sale Badge */}
+                      {item.sale_price && (
+                        <div className="absolute top-2 right-2">
+                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                            🏷️ Sale
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Price and Actions */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      
-                      {/* Price */}
-                      <div className="flex items-center gap-3">
-                        {item.sale_price ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl font-bold text-[#d3756b]">
-                              {formatPrice(item.sale_price)}
+                    {/* Product Details */}
+                    <div className="flex-1 p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-xl font-semibold text-[#5e3023] mb-2">
+                            {item.name}
+                          </h3>
+                          <p className="text-[#8c5f53] mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                          
+                          {/* Store and Category Info */}
+                          <div className="flex items-center gap-4 text-sm text-[#8c5f53] mb-3">
+                            <span className="flex items-center gap-1">
+                              🏪 {item.store_name}
                             </span>
-                            <span className="text-lg text-gray-500 line-through">
-                              {formatPrice(item.price)}
+                            <span className="flex items-center gap-1">
+                              📂 {item.category_name}
                             </span>
-                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium">
-                              {Math.round(((item.price - item.sale_price) / item.price) * 100)}% OFF
+                            <span className="flex items-center gap-1">
+                              📅 Added {formatDate(item.date_added)}
                             </span>
                           </div>
-                        ) : (
-                          <span className="text-2xl font-bold text-[#5e3023]">
-                            {formatPrice(item.price)}
-                          </span>
-                        )}
-                        
-                        {/* Stock Status */}
-                        <div className="ml-2">
-                          {item.stock_quantity > 0 ? (
-                            <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
-                              ✅ In Stock ({item.stock_quantity})
-                            </span>
-                          ) : (
-                            <span className="text-sm text-red-500 bg-red-50 px-2 py-1 rounded">
-                              ❌ Out of Stock
-                            </span>
-                          )}
                         </div>
+
+                        {/* Remove Button */}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('DEBUG: Remove button clicked for item:', item.wishlist_item_id);
+                            handleRemoveFromWishlist(item.wishlist_item_id);
+                          }}
+                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors ml-4"
+                          title="Remove from wishlist"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                          </svg>
+                        </button>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex gap-3">
-                        <Link
-                          to={`/product/${item.product_id}`}
-                          className="px-4 py-2 bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] rounded-lg transition-colors text-sm font-medium"
-                        >
-                          👁️ View Details
-                        </Link>
+                      {/* Price and Actions */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         
-                        <button
-                          onClick={() => handleAddToCart(item)}
-                          disabled={item.stock_quantity <= 0}
-                          className="px-4 py-2 bg-[#d3756b] hover:bg-[#c25d52] text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                        >
-                          {item.stock_quantity > 0 ? (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                              </svg>
-                              Add to Cart
-                            </>
+                        {/* Price */}
+                        <div className="flex items-center gap-3">
+                          {item.sale_price ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl font-bold text-[#d3756b]">
+                                {formatPrice(item.sale_price)}
+                              </span>
+                              <span className="text-lg text-gray-500 line-through">
+                                {formatPrice(item.price)}
+                              </span>
+                              <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium">
+                                {Math.round(((item.price - item.sale_price) / item.price) * 100)}% OFF
+                              </span>
+                            </div>
                           ) : (
-                            '❌ Out of Stock'
+                            <span className="text-2xl font-bold text-[#5e3023]">
+                              {formatPrice(item.price)}
+                            </span>
                           )}
-                        </button>
+                          
+                          {/* Stock Status */}
+                          <div className="ml-2">
+                            {item.stock_quantity > 0 ? (
+                              <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
+                                ✅ In Stock ({item.stock_quantity})
+                              </span>
+                            ) : (
+                              <span className="text-sm text-red-500 bg-red-50 px-2 py-1 rounded">
+                                ❌ Out of Stock
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3">
+                          <Link
+                            to={`/product/${item.product_id}`}
+                            className="px-4 py-2 bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] rounded-lg transition-colors text-sm font-medium"
+                          >
+                            👁️ View Details
+                          </Link>
+                          
+                          <button
+                            onClick={() => handleAddToCart(item)}
+                            disabled={item.stock_quantity <= 0}
+                            className="px-4 py-2 bg-[#d3756b] hover:bg-[#c25d52] text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                          >
+                            {item.stock_quantity > 0 ? (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                Add to Cart
+                              </>
+                            ) : (
+                              '❌ Out of Stock'
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-
+              );
+            })}
+            
             {/* Continue Shopping */}
             <div className="text-center py-8">
               <Link

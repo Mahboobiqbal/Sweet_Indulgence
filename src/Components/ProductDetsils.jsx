@@ -44,15 +44,17 @@ const ProductDetails = () => {
       })
       .then((data) => {
         if (data.success && data.product) {
+          console.log("Product data received:", data.product);
+          console.log("Raw image_url:", data.product.image_url);
+          console.log("Processed image URL:", getProductImageUrl(data.product));
           setProduct(data.product);
         } else {
           throw new Error(data.message || "Product not found");
         }
-        console.log("Product data:", data.product);
-        console.log("Image URL:", getProductImageUrl(data.product));
         setLoading(false);
       })
       .catch((err) => {
+        console.error("Error fetching product:", err);
         setError(err.message);
         setLoading(false);
       });

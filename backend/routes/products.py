@@ -294,47 +294,90 @@ def get_product(product_id):
     """Get a single product by ID"""
     try:
         with get_cursor() as cursor:
-            sql = """
+            # Updated query to include the primary image
+            cursor.execute("""
                 SELECT 
-                    p.*, 
+                    p.product_id,
+                    p.name,
+                    p.description,
+                    p.price,
+                    p.sale_price,
+                    p.stock_quantity,
+                    p.is_featured,
+                    p.is_active,
+                    p.date_created,
+                    p.date_updated,
+                    p.category_id,
                     c.name as category_name,
-                    s.name as store_name, s.store_id
+                    p.store_id,
+                    s.name as store_name,
+                    s.description as store_description,
+                    s.address as store_address,
+                    s.phone as store_phone,
+                    COALESCE(AVG(r.rating), 0) as avg_rating,
+                    COUNT(r.review_id) as review_count,
+                    pi.image_url as image_url
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.category_id
                 LEFT JOIN stores s ON p.store_id = s.store_id
-                WHERE p.product_id = %s
-            """
-            cursor.execute(sql, (product_id,))
-            product = cursor.fetchone()
+                LEFT JOIN reviews r ON p.product_id = r.product_id
+                LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = true
+                WHERE p.product_id = %s AND p.is_active = true
+                GROUP BY p.product_id, c.name, s.name, s.description, s.address, s.phone, pi.image_url
+            """, (product_id,))
             
-            if not product:
+            product_data = cursor.fetchone()
+            
+            if not product_data:
                 return jsonify({
                     'success': False,
                     'message': 'Product not found'
                 }), 404
             
-            # Get all images for this product
-            cursor.execute("""
-                SELECT image_id, image_url, is_primary, display_order
-                FROM product_images 
-                WHERE product_id = %s 
-                ORDER BY display_order
-            """, (product_id,))
-            images = cursor.fetchall()
+            # Handle both dict and tuple returns
+            if isinstance(product_data, dict):
+                product = product_data
+            else:
+                # Convert tuple to dict
+                columns = [desc[0] for desc in cursor.description]
+                product = dict(zip(columns, product_data))
             
-            product_dict = dict(product)
-            product_dict['images'] = [dict(img) for img in images]
+            # Convert to proper format
+            product_response = {
+                'product_id': product['product_id'],
+                'name': product['name'],
+                'description': product['description'],
+                'price': float(product['price']),
+                'sale_price': float(product['sale_price']) if product['sale_price'] else None,
+                'stock_quantity': product['stock_quantity'],
+                'is_featured': product['is_featured'],
+                'is_active': product['is_active'],
+                'date_created': product['date_created'].isoformat() if product['date_created'] else None,
+                'date_updated': product['date_updated'].isoformat() if product['date_updated'] else None,
+                'category_id': product['category_id'],
+                'category_name': product['category_name'],
+                'store_id': product['store_id'],
+                'store_name': product['store_name'],
+                'store_description': product['store_description'],
+                'store_address': product['store_address'],
+                'store_phone': product['store_phone'],
+                'avg_rating': float(product['avg_rating']) if product['avg_rating'] else 0.0,
+                'review_count': product['review_count'] if product['review_count'] else 0,
+                'image_url': product['image_url']  # This is the key addition
+            }
             
-            return jsonify({
-                'success': True,
-                'product': product_dict
-            }), 200
-            
+        return jsonify({
+            'success': True,
+            'product': product_response
+        }), 200
+        
     except Exception as e:
-        print(f"Error fetching product: {e}")
+        print(f"Error getting product: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'message': f'Error fetching product: {str(e)}'
+            'message': f'Error getting product: {str(e)}'
         }), 500
 
 @products_bp.route('/<product_id>', methods=['PUT'])
