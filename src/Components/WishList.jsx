@@ -361,7 +361,7 @@ const Wishlist = () => {
         {/* Wishlist Items */}
         {!loading && !error && wishlistItems.length > 0 && (
           <div className="space-y-4">
-            {/* Temporary test button - remove after testing */}
+            {/* Temporary test button - remove after testing
             <div className="bg-yellow-100 p-4 rounded-lg">
               <p className="text-sm text-gray-600 mb-2">Debug: Test remove function</p>
               {wishlistItems.map(item => (
@@ -376,7 +376,7 @@ const Wishlist = () => {
                   Test Remove {item.name.substring(0, 20)}...
                 </button>
               ))}
-            </div>
+            </div> */}
             
             {wishlistItems.map((item) => {
               console.log('DEBUG: Rendering item with ID:', item.wishlist_item_id);
