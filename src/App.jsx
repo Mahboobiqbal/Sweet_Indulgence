@@ -28,6 +28,8 @@ import ProductDetails from "./Components/ProductDetsils";
 import Payment from "./Components/Payment";
 import Wishlist from "./Components/WishList";
 import Cart from "./Components/Cart";
+import StorePage from './Components/StorePage';
+
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { currentUser, isAuthenticated } = useAuth();
@@ -186,6 +188,16 @@ const AppRoutes = () => {
               <StoreCreationPage />
             </ProtectedRoute>
           }
+        />
+
+        {/* New Route - Public Access */}
+        <Route 
+          path="/store/:storeId" 
+          element={
+            <ProtectedRoute requireAuth={false}>
+              <StorePage />
+            </ProtectedRoute>
+          } 
         />
 
         {/* Catch all route - redirect based on auth status */}

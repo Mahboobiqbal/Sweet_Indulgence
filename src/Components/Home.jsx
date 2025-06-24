@@ -234,7 +234,11 @@ const Home = () => {
                 <p className="text-[#d3756b] font-medium mb-4">
                   {product.price}
                 </p>
-                <button className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-2 rounded-lg font-medium transition-colors">
+                {/* Updated button to navigate to products page */}
+                <button
+                  className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-2 rounded-lg font-medium transition-colors"
+                  onClick={() => navigate("/products")}
+                >
                   Order Now
                 </button>
               </div>
