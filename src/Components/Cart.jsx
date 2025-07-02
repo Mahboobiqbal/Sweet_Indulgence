@@ -4,74 +4,182 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartData, setCartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadCartItems();
-  }, []);
+    if (isAuthenticated) {
+      loadCartItems();
+    } else {
+      setLoading(false);
+    }
 
-  const loadCartItems = () => {
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      if (isAuthenticated) {
+        loadCartItems();
+      }
+    };
+
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    return () => window.removeEventListener('cartUpdated', handleCartUpdate);
+  }, [isAuthenticated]);
+
+  const loadCartItems = async () => {
     try {
-      const storedCart = localStorage.getItem('cart');
-      if (storedCart) {
-        setCartItems(JSON.parse(storedCart));
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      console.log('DEBUG: Loading cart from API');
+      
+      const response = await fetch('http://localhost:5000/api/cart/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('DEBUG: Cart API response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('DEBUG: Cart data received:', data);
+        
+        if (data.success) {
+          setCartData(data.cart);
+        } else {
+          console.error('Cart API error:', data.message);
+          setCartData({ items: [], total_items: 0, total_amount: 0 });
+        }
+      } else {
+        console.error('Failed to load cart:', response.status);
+        setCartData({ items: [], total_items: 0, total_amount: 0 });
       }
     } catch (error) {
       console.error('Error loading cart:', error);
-      toast.error('Error loading cart items');
+      setCartData({ items: [], total_items: 0, total_amount: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  const updateCart = (items) => {
-    setCartItems(items);
-    localStorage.setItem('cart', JSON.stringify(items));
-  };
-
-  const updateQuantity = (productId, newQuantity) => {
+  const updateQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity < 1) {
-      removeItem(productId);
+      removeItem(cartItemId);
       return;
     }
 
-    setUpdating(true);
-    const updatedItems = cartItems.map(item => 
-      item.product_id === productId 
-        ? { ...item, quantity: newQuantity }
-        : item
-    );
-    updateCart(updatedItems);
-    setUpdating(false);
+    try {
+      setUpdating(true);
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`http://localhost:5000/api/cart/items/${cartItemId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ quantity: newQuantity })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Reload cart data
+        await loadCartItems();
+        toast.success('Quantity updated');
+      } else {
+        toast.error(data.message || 'Failed to update quantity');
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast.error('Failed to update quantity');
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const removeItem = (productId) => {
-    const updatedItems = cartItems.filter(item => item.product_id !== productId);
-    updateCart(updatedItems);
-    toast.success('Item removed from cart');
+  const removeItem = async (cartItemId) => {
+    try {
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`http://localhost:5000/api/cart/items/${cartItemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Reload cart data
+        await loadCartItems();
+        toast.success('Item removed from cart');
+        
+        // Dispatch event to update navbar cart count
+        window.dispatchEvent(new Event('cartUpdated'));
+      } else {
+        toast.error(data.message || 'Failed to remove item');
+      }
+    } catch (error) {
+      console.error('Error removing item:', error);
+      toast.error('Failed to remove item');
+    }
   };
 
-  const clearCart = () => {
-    updateCart([]);
-    toast.success('Cart cleared');
+  const clearCart = async () => {
+    try {
+      const token = localStorage.getItem('token');
+
+      const response = await fetch('http://localhost:5000/api/cart/', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setCartData({ items: [], total_items: 0, total_amount: 0 });
+        toast.success('Cart cleared');
+        
+        // Dispatch event to update navbar cart count
+        window.dispatchEvent(new Event('cartUpdated'));
+      } else {
+        toast.error(data.message || 'Failed to clear cart');
+      }
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      toast.error('Failed to clear cart');
+    }
   };
 
   const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => {
-      const price = item.sale_price || item.price;
-      return total + (price * item.quantity);
-    }, 0);
+    return cartData?.total_amount || 0;
   };
 
   const getTotalItems = () => {
-    return cartItems.reduce((total, item) => total + item.quantity, 0);
+    return cartData?.total_items || 0;
+  };
+
+  const getCartItems = () => {
+    return cartData?.items || [];
   };
 
   const handleCheckout = () => {
+    const cartItems = getCartItems();
     if (cartItems.length === 0) {
       toast.error('Your cart is empty');
       return;
@@ -100,6 +208,42 @@ const Cart = () => {
     }).format(price).replace('LKR', 'Rs.');
   };
 
+  const getProductImageUrl = (item) => {
+    if (item.image_url) {
+      if (item.image_url.startsWith("/uploads/")) {
+        return `http://localhost:5000${item.image_url}`;
+      }
+      return item.image_url;
+    }
+    return '/placeholder-product.jpg';
+  };
+
+  // Show login prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#fff9f5] py-8 px-4 flex items-center justify-center">
+        <div className="text-center bg-white rounded-xl shadow-md border border-[#e7dcca] p-8 max-w-md">
+          <h2 className="text-2xl font-bold text-[#5e3023] mb-4">Please Log In</h2>
+          <p className="text-[#8c5f53] mb-6">You need to be logged in to view your cart.</p>
+          <div className="space-x-4">
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-3 rounded-lg transition-colors"
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => navigate('/signup')}
+              className="bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] px-6 py-3 rounded-lg transition-colors"
+            >
+              Sign Up
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fff9f5] py-8 px-4 flex items-center justify-center">
@@ -110,6 +254,8 @@ const Cart = () => {
       </div>
     );
   }
+
+  const cartItems = getCartItems();
 
   return (
     <div className="min-h-screen bg-[#fff9f5] py-8 px-4">
@@ -141,13 +287,9 @@ const Cart = () => {
               <svg
                 className="w-24 h-24 text-[#e7dcca] mx-auto mb-4"
                 fill="currentColor"
-                viewBox="0 0 20 20"
+                viewBox="0 0 24 24"
               >
-                <path
-                  fillRule="evenodd"
-                  d="M10 2L3 7v11a1 1 0 001 1h12a1 1 0 001-1V7l-7-5zM6 9a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"
-                  clipRule="evenodd"
-                />
+                <path d="M7 4V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2h4a1 1 0 0 1 0 2h-1v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6H3a1 1 0 1 1 0-2h4zM6 6v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6H6zm8-2V3H8v1h6z"/>
               </svg>
               <h2 className="text-2xl font-bold text-[#5e3023] mb-2">Your cart is empty</h2>
               <p className="text-[#8c5f53] mb-6">
@@ -172,11 +314,11 @@ const Cart = () => {
                 </div>
                 <div className="divide-y divide-[#e7dcca]">
                   {cartItems.map((item) => (
-                    <div key={item.product_id} className="p-6 flex items-center space-x-4">
+                    <div key={item.cart_item_id} className="p-6 flex items-center space-x-4">
                       {/* Product Image */}
                       <div className="flex-shrink-0">
                         <img
-                          src={item.image_url || '/placeholder-product.jpg'}
+                          src={getProductImageUrl(item)}
                           alt={item.name}
                           className="w-20 h-20 object-cover rounded-lg border border-[#e7dcca]"
                           onError={(e) => {
@@ -214,7 +356,7 @@ const Cart = () => {
                       {/* Quantity Controls */}
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.cart_item_id, item.quantity - 1)}
                           disabled={updating}
                           className="w-8 h-8 bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] rounded-full flex items-center justify-center font-bold transition-colors disabled:opacity-50"
                         >
@@ -224,8 +366,8 @@ const Cart = () => {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
-                          disabled={updating}
+                          onClick={() => updateQuantity(item.cart_item_id, item.quantity + 1)}
+                          disabled={updating || item.quantity >= item.stock_quantity}
                           className="w-8 h-8 bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] rounded-full flex items-center justify-center font-bold transition-colors disabled:opacity-50"
                         >
                           +
@@ -235,10 +377,10 @@ const Cart = () => {
                       {/* Item Total */}
                       <div className="text-right">
                         <div className="text-lg font-bold text-[#5e3023]">
-                          {formatPrice((item.sale_price || item.price) * item.quantity)}
+                          {formatPrice(item.item_total)}
                         </div>
                         <button
-                          onClick={() => removeItem(item.product_id)}
+                          onClick={() => removeItem(item.cart_item_id)}
                           className="text-red-500 hover:text-red-700 text-sm font-medium mt-1 transition-colors"
                         >
                           Remove

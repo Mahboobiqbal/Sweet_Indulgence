@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
 
 const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { order } = location.state || {};
+  const { order, cartItems, totalAmount } = location.state || {};
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -13,7 +14,7 @@ const Payment = () => {
     expiry: "",
     cvv: "",
   });
-  const [errors, setErrors] = useState({});
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Helper function to get product image URL
   const getProductImageUrl = (product) => {
@@ -44,63 +45,111 @@ const Payment = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Validate form
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(formData.email))
-      newErrors.email = "Invalid email format";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (!formData.cardNumber.trim())
-      newErrors.cardNumber = "Card number is required";
-    else if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, "")))
-      newErrors.cardNumber = "Card number must be 16 digits";
-    if (!formData.expiry.trim()) newErrors.expiry = "Expiry date is required";
-    else if (!/^\d{2}\/\d{2}$/.test(formData.expiry))
-      newErrors.expiry = "Expiry must be MM/YY";
-    if (!formData.cvv.trim()) newErrors.cvv = "CVV is required";
-    else if (!/^\d{3}$/.test(formData.cvv))
-      newErrors.cvv = "CVV must be 3 digits";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle form submission
-  const handleSubmit = (e) => {
+  // Handle form submission - Always successful for testing
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      console.log("Payment submitted:", { order, formData });
-      // Here you would typically send the payment data to your backend
-      // so lets send
-      fetch("http://localhost:5000/api/payments", {
+    
+    try {
+      setIsProcessing(true);
+      
+      // Show processing toast
+      toast.info("Processing your payment...");
+      
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Create order payload
+      const orderPayload = {
+        // If it's from cart
+        ...(cartItems && {
+          items: cartItems.map(item => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_price: item.sale_price || item.price
+          })),
+          total_amount: totalAmount || 0,
+          order_type: 'cart'
+        }),
+        // If it's a single product order
+        ...(order && !cartItems && {
+          items: [{
+            product_id: order.product_id,
+            quantity: order.quantity,
+            unit_price: order.sale_price || order.price
+          }],
+          total_amount: (order.sale_price || order.price) * order.quantity,
+          order_type: 'single'
+        }),
+        // Customer details
+        shipping_address: formData.address || "123 Default Street",
+        shipping_city: "Default City",
+        shipping_phone: "0000000000",
+        payment_method: "Credit Card",
+        customer_name: formData.name || "Test Customer",
+        customer_email: formData.email || "test@example.com",
+        order_notes: "Test order - payment simulation"
+      };
+
+      console.log("Creating order with payload:", orderPayload);
+
+      // Send order to backend
+      const response = await fetch("http://localhost:5000/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ order, ...formData }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            alert("Payment successful! Thank you for your order.");
-            navigate("orders"); // Redirect to orders page after success
-          } else {
-            alert("Payment failed. Please try again.");
+        body: JSON.stringify(orderPayload),
+      });
+
+      const data = await response.json();
+      console.log("Order response:", data);
+
+      if (response.ok && data.success) {
+        // Clear cart if this was a cart checkout
+        if (cartItems) {
+          try {
+            await fetch('http://localhost:5000/api/cart/', {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            // Update cart count in navbar
+            window.dispatchEvent(new Event('cartUpdated'));
+          } catch (cartError) {
+            console.error('Error clearing cart:', cartError);
           }
-        })
-        .catch((error) => {
-          console.error("Payment error:", error);
-          alert("An error occurred while processing your payment.");
-        });
+        }
+
+        // Show success message
+        toast.success("🎉 Payment successful! Your order has been placed.");
+        
+        // Redirect to orders page after success
+        setTimeout(() => {
+          navigate("/orders");
+        }, 1500);
+        
+      } else {
+        throw new Error(data.message || 'Failed to create order');
+      }
+      
+    } catch (error) {
+      console.error("Payment/Order error:", error);
+      toast.error("❌ Payment failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  if (!order || !order.product_id) {
+  // Check if we have valid order data
+  const hasValidOrder = (order && order.product_id) || (cartItems && cartItems.length > 0);
+
+  if (!hasValidOrder) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#fff9f5]  ">
-        <div className="text-center bg-white rounded-xl shadow-md border border-[#e7dcca] p-6 max-w-md  ">
+      <div className="flex items-center justify-center min-h-screen bg-[#fff9f5]">
+        <div className="text-center bg-white rounded-xl shadow-md border border-[#e7dcca] p-6 max-w-md">
           <svg
             className="mx-auto h-16 w-16 text-[#e7dcca] mb-4"
             fill="currentColor"
@@ -115,75 +164,99 @@ const Payment = () => {
           <h3 className="text-xl font-semibold text-[#5e3023] mb-2">
             No Order Found
           </h3>
-          <p className="text-[#8c5f53]">
-            Please select a product to proceed with payment.
+          <p className="text-[#8c5f53] mb-4">
+            Please select a product or add items to cart to proceed with payment.
           </p>
+          <button
+            onClick={() => navigate("/products")}
+            className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            Browse Products
+          </button>
         </div>
       </div>
     );
   }
 
+  // Calculate totals
+  let subtotal = 0;
+  let items = [];
+
+  if (cartItems) {
+    items = cartItems;
+    subtotal = totalAmount || cartItems.reduce((sum, item) => 
+      sum + (item.sale_price || item.price) * item.quantity, 0
+    );
+  } else if (order) {
+    items = [order];
+    subtotal = (order.sale_price || order.price) * order.quantity;
+  }
+
+  const deliveryFee = subtotal > 5000 ? 0 : 200; // Free delivery over Rs. 5000
+  const total = subtotal + deliveryFee;
+
   return (
-    <div className="min-h-screen bg-[#fff9f5] py-12 px-4 sm:px-6 lg:px-8  ">
+    <div className="min-h-screen bg-[#fff9f5] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-[#e7dcca] mt-20">
         <div className="p-6 lg:p-10">
           <h1 className="text-3xl font-bold text-[#5e3023] mb-8">Checkout</h1>
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Order Summary */}
             <div className="bg-[#f5e6d3] rounded-xl p-6">
               <h2 className="text-xl font-semibold text-[#5e3023] mb-4">
                 Order Summary
               </h2>
-              <div className="flex items-center gap-4 mb-4">
-                <img
-                  src={getProductImageUrl(order)}
-                  alt={order.name}
-                  className="w-24 h-24 object-cover rounded-lg bg-[#f5f5f5]"
-                  onError={(e) => {
-                    console.error("Image failed to load:", e.target.src);
-                    e.target.src =
-                      "https://via.placeholder.com/500x500/f5e6d3/5e3023?text=No+Image";
-                  }}
-                />
-                <div>
-                  <h3 className="text-lg font-semibold text-[#5e3023]">
-                    {order.name}
-                  </h3>
-                  <p className="text-[#8c5f53]">Quantity: {order.quantity}</p>
-                  <p className="text-[#5e3023] font-bold">
-                    {order.sale_price
-                      ? formatPrice(order.sale_price * order.quantity)
-                      : formatPrice(order.price * order.quantity)}
-                  </p>
-                </div>
-              </div>
-              <div className="border-t border-[#e7dcca] pt-4">
-                <p className="text-[#8c5f53]">
-                  <span className="font-medium">Subtotal:</span>{" "}
-                  {order.sale_price
-                    ? formatPrice(order.sale_price * order.quantity)
-                    : formatPrice(order.price * order.quantity)}
-                </p>
-                <p className="text-[#8c5f53]">
-                  <span className="font-medium">Shipping:</span>{" "}
-                  {order.quantity * (order.sale_price || order.price) > 50
-                    ? "Free"
-                    : "Rs. 10"}
-                </p>
-                <p className="text-[#5e3023] font-bold mt-2">
-                  <span className="font-medium">Total:</span>{" "}
-                  {order.quantity * (order.sale_price || order.price) > 50
-                    ? formatPrice(
-                        order.sale_price
-                          ? order.sale_price * order.quantity
-                          : order.price * order.quantity
-                      )
-                    : formatPrice(
-                        (order.sale_price
-                          ? order.sale_price * order.quantity
-                          : order.price * order.quantity) + 10
+              
+              {/* Items List */}
+              <div className="space-y-4 mb-4">
+                {items.map((item, index) => (
+                  <div key={index} className="flex items-center gap-4">
+                    <img
+                      src={getProductImageUrl(item)}
+                      alt={item.name}
+                      className="w-16 h-16 object-cover rounded-lg bg-[#f5f5f5]"
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/500x500/f5e6d3/5e3023?text=No+Image";
+                      }}
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-[#5e3023] text-sm">
+                        {item.name}
+                      </h3>
+                      <p className="text-[#8c5f53] text-sm">
+                        Qty: {item.quantity} × {formatPrice(item.sale_price || item.price)}
+                      </p>
+                      {item.store_name && (
+                        <p className="text-xs text-[#8c5f53]">From: {item.store_name}</p>
                       )}
-                </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-[#5e3023]">
+                        {formatPrice((item.sale_price || item.price) * item.quantity)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totals */}
+              <div className="border-t border-[#e7dcca] pt-4 space-y-2">
+                <div className="flex justify-between text-[#8c5f53]">
+                  <span>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items):</span>
+                  <span>{formatPrice(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-[#8c5f53]">
+                  <span>Delivery Fee:</span>
+                  <span>{deliveryFee === 0 ? 'Free' : formatPrice(deliveryFee)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-[#5e3023] border-t border-[#e7dcca] pt-2">
+                  <span>Total:</span>
+                  <span>{formatPrice(total)}</span>
+                </div>
+                {deliveryFee === 0 && (
+                  <p className="text-xs text-green-600">🎉 You qualified for free delivery!</p>
+                )}
               </div>
             </div>
 
@@ -192,7 +265,14 @@ const Payment = () => {
               <h2 className="text-xl font-semibold text-[#5e3023] mb-4">
                 Payment Details
               </h2>
-              <div className="space-y-4">
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+                <p className="text-blue-700 text-sm">
+                  💡 <strong>Demo Mode:</strong> Enter any details to complete your order. No real payment will be processed.
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[#5e3023] mb-1">
                     Full Name
@@ -203,12 +283,10 @@ const Payment = () => {
                     value={formData.name}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-[#5e3023]"
-                    placeholder="John Doe"
+                    placeholder="John Doe (any name works)"
                   />
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-                  )}
                 </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-[#5e3023] mb-1">
                     Email
@@ -219,30 +297,24 @@ const Payment = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-[#5e3023]"
-                    placeholder="john.doe@example.com"
+                    placeholder="test@example.com (any email works)"
                   />
-                  {errors.email && (
-                    <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-                  )}
                 </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-[#5e3023] mb-1">
-                    Address
+                    Delivery Address
                   </label>
-                  <input
-                    type="text"
+                  <textarea
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
+                    rows="3"
                     className="w-full px-4 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-[#5e3023]"
-                    placeholder="123 Sweet St, Bakery City"
+                    placeholder="123 Sweet St, Bakery City (any address works)"
                   />
-                  {errors.address && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.address}
-                    </p>
-                  )}
                 </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-[#5e3023] mb-1">
                     Card Number
@@ -253,14 +325,10 @@ const Payment = () => {
                     value={formData.cardNumber}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-[#5e3023]"
-                    placeholder="1234 5678 9012 3456"
+                    placeholder="1234 5678 9012 3456 (demo card)"
                   />
-                  {errors.cardNumber && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.cardNumber}
-                    </p>
-                  )}
                 </div>
+                
                 <div className="flex gap-4">
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-[#5e3023] mb-1">
@@ -274,11 +342,6 @@ const Payment = () => {
                       className="w-full px-4 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-[#5e3023]"
                       placeholder="12/25"
                     />
-                    {errors.expiry && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.expiry}
-                      </p>
-                    )}
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-[#5e3023] mb-1">
@@ -292,18 +355,29 @@ const Payment = () => {
                       className="w-full px-4 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-[#5e3023]"
                       placeholder="123"
                     />
-                    {errors.cvv && (
-                      <p className="text-red-500 text-xs mt-1">{errors.cvv}</p>
-                    )}
                   </div>
                 </div>
+                
+                {/* Always enabled payment button */}
                 <button
-                  onClick={handleSubmit}
-                  className="w-full bg-[#5e3023] text-white py-3 rounded-lg hover:bg-[#4a241b] transition-colors font-medium text-sm sm:text-base"
+                  type="submit"
+                  disabled={isProcessing}
+                  className="w-full bg-gradient-to-r from-[#d3756b] to-[#c25d52] hover:from-[#c25d52] hover:to-[#b54842] text-white py-4 rounded-lg font-bold text-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  Complete Payment
+                  {isProcessing ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Processing Payment...
+                    </div>
+                  ) : (
+                    `💳 Complete Payment - ${formatPrice(total)}`
+                  )}
                 </button>
-              </div>
+                
+                <p className="text-xs text-center text-[#8c5f53] mt-2">
+                  🔒 This is a demo checkout. No real payment will be processed.
+                </p>
+              </form>
             </div>
           </div>
         </div>

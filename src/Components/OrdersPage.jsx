@@ -9,12 +9,19 @@ const OrdersPage = () => {
   const [userRole, setUserRole] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [userStore, setUserStore] = useState(null);
   const ordersPerPage = 10;
 
   useEffect(() => {
     fetchUserProfile();
-    fetchOrders();
-  }, [currentPage]);
+  }, []);
+
+  // Fetch orders when userRole or currentPage changes
+  useEffect(() => {
+    if (userRole) {
+      fetchOrders();
+    }
+  }, [userRole, currentPage]);
 
   const fetchUserProfile = async () => {
     try {
@@ -34,9 +41,35 @@ const OrdersPage = () => {
       if (response.ok) {
         const data = await response.json();
         setUserRole(data.user.role);
+        
+        // If supplier, fetch their store info
+        if (data.user.role === 'supplier') {
+          await fetchSupplierStore();
+        }
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const fetchSupplierStore = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const storeResponse = await fetch('http://localhost:5000/api/stores/check', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (storeResponse.ok) {
+        const storeData = await storeResponse.json();
+        if (storeData.hasStore && storeData.store) {
+          setUserStore(storeData.store);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching supplier store:', error);
     }
   };
 
@@ -49,25 +82,16 @@ const OrdersPage = () => {
         return;
       }
 
+      console.log('DEBUG: Fetching orders for user role:', userRole);
+
       let url = `http://localhost:5000/api/orders?page=${currentPage}&limit=${ordersPerPage}`;
       
-      // If user is a supplier, get their store orders
-      if (userRole === 'supplier') {
-        // First get the supplier's store
-        const storeResponse = await fetch('http://localhost:5000/api/stores/check', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (storeResponse.ok) {
-          const storeData = await storeResponse.json();
-          if (storeData.hasStore && storeData.store) {
-            url = `http://localhost:5000/api/orders/store/${storeData.store.store_id}?page=${currentPage}&limit=${ordersPerPage}`;
-          }
-        }
+      // If user is a supplier and has a store, get their store orders
+      if (userRole === 'supplier' && userStore) {
+        url = `http://localhost:5000/api/orders/store/${userStore.store_id}?page=${currentPage}&limit=${ordersPerPage}`;
       }
+
+      console.log('DEBUG: Fetching from URL:', url);
 
       const response = await fetch(url, {
         headers: {
@@ -76,14 +100,19 @@ const OrdersPage = () => {
         }
       });
 
+      console.log('DEBUG: Orders response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('DEBUG: Orders data:', data);
+        
         setOrders(data.orders || []);
         if (data.pagination) {
-          setTotalPages(data.pagination.pages);
+          setTotalPages(data.pagination.total_pages || data.pagination.pages || 1);
         }
       } else {
         const errorData = await response.json();
+        console.error('Orders API Error:', errorData);
         toast.error(errorData.message || 'Failed to fetch orders');
       }
     } catch (error) {
@@ -112,7 +141,7 @@ const OrdersPage = () => {
             order.order_id === orderId ? { ...order, status: newStatus } : order
           )
         );
-        toast.success(`Order ${orderId} status updated to ${newStatus}`);
+        toast.success(`Order status updated to ${newStatus}`);
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || 'Failed to update order status');
@@ -154,7 +183,7 @@ const OrdersPage = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
       case 'processing':
@@ -164,6 +193,10 @@ const OrdersPage = () => {
       case 'delivered':
         return 'bg-green-100 text-green-800';
       case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'unpaid':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -181,79 +214,117 @@ const OrdersPage = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PK', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'PKR',
+      minimumFractionDigits: 0,
     }).format(amount);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fff9f5] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3756b] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading orders...</p>
+          <p className="mt-4 text-[#8c5f53]">Loading orders...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message for suppliers without store
+  if (userRole === 'supplier' && !userStore) {
+    return (
+      <div className="min-h-screen bg-[#fff9f5] py-8 px-4">
+        <ToastContainer />
+        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md border border-[#e7dcca] mt-20">
+          <div className="p-8 text-center">
+            <div className="text-6xl mb-4">🏪</div>
+            <h2 className="text-2xl font-bold text-[#5e3023] mb-4">No Store Found</h2>
+            <p className="text-[#8c5f53] mb-6">
+              You need to create a store to view orders. Please set up your store first.
+            </p>
+            <button
+              onClick={() => window.location.href = '/create-store'}
+              className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              Create Store
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-[#fff9f5] py-8 px-4">
       <ToastContainer />
-      <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mt-20">
+      <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-[#e7dcca] mt-20">
         <div className="p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold">
-              {userRole === 'supplier' ? 'Store Orders' : 'My Orders'}
-            </h2>
-            <div className="text-sm text-gray-600">
+            <div>
+              <h2 className="text-3xl font-bold text-[#5e3023]">
+                {userRole === 'supplier' ? 'Store Orders' : 'My Orders'}
+              </h2>
+              {userRole === 'supplier' && userStore && (
+                <p className="text-[#8c5f53] mt-1">Orders for {userStore.name}</p>
+              )}
+            </div>
+            <div className="text-sm text-[#8c5f53] bg-[#f5e6d3] px-4 py-2 rounded-lg">
               Total: {orders.length} orders
             </div>
           </div>
 
           {orders.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">📦</div>
-              <h3 className="text-xl font-medium text-gray-600 mb-2">No orders found</h3>
-              <p className="text-gray-500">
+              <div className="text-[#e7dcca] text-6xl mb-4">📦</div>
+              <h3 className="text-xl font-semibold text-[#5e3023] mb-2">No orders found</h3>
+              <p className="text-[#8c5f53]">
                 {userRole === 'supplier' 
-                  ? "You haven't received any orders yet." 
-                  : "You haven't placed any orders yet."}
+                  ? "You haven't received any orders yet. Customers will see your products and place orders." 
+                  : "You haven't placed any orders yet. Start shopping to see your orders here."}
               </p>
+              {userRole !== 'supplier' && (
+                <button
+                  onClick={() => window.location.href = '/products'}
+                  className="mt-4 bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-3 rounded-lg transition-colors font-medium"
+                >
+                  Start Shopping
+                </button>
+              )}
             </div>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-200">
-                      <th className="px-4 py-3 font-semibold text-gray-700">Order ID</th>
+                    <tr className="bg-[#f5e6d3]">
+                      <th className="px-4 py-3 font-semibold text-[#5e3023]">Order ID</th>
                       {userRole === 'supplier' && (
-                        <th className="px-4 py-3 font-semibold text-gray-700">Customer</th>
+                        <th className="px-4 py-3 font-semibold text-[#5e3023]">Customer</th>
                       )}
-                      <th className="px-4 py-3 font-semibold text-gray-700">Date</th>
-                      <th className="px-4 py-3 font-semibold text-gray-700">Total</th>
-                      <th className="px-4 py-3 font-semibold text-gray-700">Status</th>
-                      <th className="px-4 py-3 font-semibold text-gray-700">Payment</th>
-                      <th className="px-4 py-3 font-semibold text-gray-700">Actions</th>
+                      <th className="px-4 py-3 font-semibold text-[#5e3023]">Date</th>
+                      <th className="px-4 py-3 font-semibold text-[#5e3023]">Total</th>
+                      <th className="px-4 py-3 font-semibold text-[#5e3023]">Status</th>
+                      <th className="px-4 py-3 font-semibold text-[#5e3023]">Payment</th>
+                      <th className="px-4 py-3 font-semibold text-[#5e3023]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((order) => (
-                      <tr key={order.order_id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-3 font-mono text-sm">
+                      <tr key={order.order_id} className="border-t border-[#e7dcca] hover:bg-[#fff9f5]">
+                        <td className="px-4 py-3 font-mono text-sm text-[#5e3023]">
                           {order.order_id.substring(0, 8)}...
                         </td>
                         {userRole === 'supplier' && (
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3 text-[#5e3023]">
                             {order.customer_name || 'Customer'}
                           </td>
                         )}
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-[#8c5f53]">
                           {formatDate(order.date_created)}
                         </td>
-                        <td className="px-4 py-3 font-semibold">
+                        <td className="px-4 py-3 font-semibold text-[#5e3023]">
                           {formatCurrency(order.total_amount)}
                         </td>
                         <td className="px-4 py-3">
@@ -261,7 +332,7 @@ const OrdersPage = () => {
                             <select
                               value={order.status}
                               onChange={(e) => handleStatusChange(order.order_id, e.target.value)}
-                              className="px-3 py-1 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-sm"
+                              className="px-3 py-1 rounded-full border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b] text-sm bg-white"
                             >
                               <option value="pending">Pending</option>
                               <option value="processing">Processing</option>
@@ -283,7 +354,7 @@ const OrdersPage = () => {
                         <td className="px-4 py-3">
                           <button
                             onClick={() => openOrderDetails(order)}
-                            className="px-4 py-2 bg-gradient-to-r from-[#d3756b] to-[#c25d52] text-white hover:from-[#c25d52] hover:to-[#b54842] rounded font-semibold text-sm transition duration-200"
+                            className="px-4 py-2 bg-gradient-to-r from-[#d3756b] to-[#c25d52] text-white hover:from-[#c25d52] hover:to-[#b54842] rounded-lg font-medium text-sm transition duration-200"
                           >
                             View Details
                           </button>
@@ -296,11 +367,11 @@ const OrdersPage = () => {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center mt-6 space-x-2">
+                <div className="flex justify-center items-center mt-8 space-x-2">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 rounded-lg bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
@@ -310,10 +381,10 @@ const OrdersPage = () => {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 rounded ${
+                        className={`px-3 py-2 rounded-lg transition-colors ${
                           currentPage === page
                             ? 'bg-[#d3756b] text-white'
-                            : 'bg-gray-200 hover:bg-gray-300'
+                            : 'bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023]'
                         }`}
                       >
                         {page}
@@ -324,7 +395,7 @@ const OrdersPage = () => {
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 rounded-lg bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                   </button>
@@ -335,17 +406,17 @@ const OrdersPage = () => {
         </div>
       </div>
 
-      {/* Order Details Modal */}
+      {/* Order Details Modal - Keep your existing modal code here */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-[#e7dcca]">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold">
+              <h3 className="text-xl font-bold text-[#5e3023]">
                 Order Details - {selectedOrder.order_id.substring(0, 8)}...
               </h3>
               <button
                 onClick={closeOrderDetails}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
+                className="text-[#8c5f53] hover:text-[#5e3023] text-2xl transition-colors"
               >
                 ×
               </button>
@@ -353,7 +424,7 @@ const OrdersPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <h4 className="font-medium mb-3 text-gray-700">Order Information</h4>
+                <h4 className="font-semibold mb-3 text-[#5e3023]">Order Information</h4>
                 <div className="space-y-2 text-sm">
                   <p><strong>Order ID:</strong> {selectedOrder.order_id}</p>
                   <p><strong>Date:</strong> {formatDate(selectedOrder.date_created)}</p>
@@ -374,7 +445,7 @@ const OrdersPage = () => {
               </div>
 
               <div>
-                <h4 className="font-medium mb-3 text-gray-700">Shipping Details</h4>
+                <h4 className="font-semibold mb-3 text-[#5e3023]">Shipping Details</h4>
                 <div className="space-y-2 text-sm">
                   <p><strong>Address:</strong> {selectedOrder.shipping_address}</p>
                   <p><strong>City:</strong> {selectedOrder.shipping_city}</p>
@@ -385,33 +456,33 @@ const OrdersPage = () => {
 
             {selectedOrder.order_notes && (
               <div className="mb-6">
-                <h4 className="font-medium mb-2 text-gray-700">Order Notes</h4>
-                <p className="text-sm bg-gray-50 p-3 rounded">{selectedOrder.order_notes}</p>
+                <h4 className="font-semibold mb-2 text-[#5e3023]">Order Notes</h4>
+                <p className="text-sm bg-[#f5e6d3] p-3 rounded-lg">{selectedOrder.order_notes}</p>
               </div>
             )}
 
             {selectedOrder.items && selectedOrder.items.length > 0 && (
               <div className="mb-6">
-                <h4 className="font-medium mb-3 text-gray-700">Items Ordered</h4>
+                <h4 className="font-semibold mb-3 text-[#5e3023]">Items Ordered</h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse border border-gray-200">
+                  <table className="w-full text-sm border-collapse border border-[#e7dcca]">
                     <thead>
-                      <tr className="bg-gray-50">
-                        <th className="border border-gray-200 px-3 py-2 text-left">Product</th>
-                        <th className="border border-gray-200 px-3 py-2 text-center">Quantity</th>
-                        <th className="border border-gray-200 px-3 py-2 text-right">Unit Price</th>
-                        <th className="border border-gray-200 px-3 py-2 text-right">Total</th>
+                      <tr className="bg-[#f5e6d3]">
+                        <th className="border border-[#e7dcca] px-3 py-2 text-left">Product</th>
+                        <th className="border border-[#e7dcca] px-3 py-2 text-center">Quantity</th>
+                        <th className="border border-[#e7dcca] px-3 py-2 text-right">Unit Price</th>
+                        <th className="border border-[#e7dcca] px-3 py-2 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedOrder.items.map((item, index) => (
                         <tr key={index}>
-                          <td className="border border-gray-200 px-3 py-2">{item.product_name || item.name}</td>
-                          <td className="border border-gray-200 px-3 py-2 text-center">{item.quantity}</td>
-                          <td className="border border-gray-200 px-3 py-2 text-right">
+                          <td className="border border-[#e7dcca] px-3 py-2">{item.product_name || item.name}</td>
+                          <td className="border border-[#e7dcca] px-3 py-2 text-center">{item.quantity}</td>
+                          <td className="border border-[#e7dcca] px-3 py-2 text-right">
                             {formatCurrency(item.unit_price || item.price)}
                           </td>
-                          <td className="border border-gray-200 px-3 py-2 text-right font-medium">
+                          <td className="border border-[#e7dcca] px-3 py-2 text-right font-medium">
                             {formatCurrency(item.total_price || (item.quantity * (item.unit_price || item.price)))}
                           </td>
                         </tr>
@@ -422,9 +493,9 @@ const OrdersPage = () => {
               </div>
             )}
 
-            <div className="border-t pt-4">
+            <div className="border-t border-[#e7dcca] pt-4">
               <div className="flex justify-between items-center mb-4">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-[#8c5f53]">
                   {selectedOrder.loyalty_points_used > 0 && (
                     <p>Loyalty Points Used: {selectedOrder.loyalty_points_used}</p>
                   )}
@@ -433,7 +504,7 @@ const OrdersPage = () => {
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-semibold">
+                  <p className="text-lg font-bold text-[#5e3023]">
                     Total: {formatCurrency(selectedOrder.total_amount)}
                   </p>
                 </div>
@@ -442,7 +513,7 @@ const OrdersPage = () => {
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={closeOrderDetails}
-                  className="px-6 py-2 bg-gray-300 hover:bg-gray-400 rounded font-semibold transition duration-200"
+                  className="px-6 py-2 bg-[#e7dcca] hover:bg-[#d3c2a8] text-[#5e3023] rounded-lg font-medium transition-colors"
                 >
                   Close
                 </button>
