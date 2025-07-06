@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import BakeHouseImage from '../assets/BakeHouse.png';
 
-const StoreDetailsPage = () => {
+const StoreDetails = () => {
   const { storeId } = useParams();
   const navigate = useNavigate();
   const [store, setStore] = useState(null);
-  const [products, setProducts] = useState([]); // Initialize as empty array
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,18 +44,15 @@ const StoreDetailsPage = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setProducts(data.products || []); // Ensure it's always an array
+          setProducts(data.products || []);
         } else {
           console.error('Failed to fetch products:', data.message);
-          setProducts([]); // Set to empty array on error
         }
       } else {
         console.error('Failed to fetch products');
-        setProducts([]); // Set to empty array on error
       }
     } catch (err) {
       console.error('Error fetching products:', err);
-      setProducts([]); // Set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -211,8 +208,7 @@ const StoreDetailsPage = () => {
           <span className="text-[#8c5f53]">{products.length} products available</span>
         </div>
 
-        {/* Check if products is an array and has items */}
-        {Array.isArray(products) && products.length > 0 ? (
+        {products.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((product) => (
               <div
@@ -291,4 +287,4 @@ const StoreDetailsPage = () => {
   );
 };
 
-export default StoreDetailsPage;
+export default StoreDetails;

@@ -12,7 +12,7 @@ import SignUpPage from "./Components/Signup";
 import StoreCreationPage from "./Components/StoreCreationpage";
 import AboutPage from "./Components/About";
 import ContactPage from "./Components/Contact";
-import StoreDetailsPage from "./Components/Storedetailspage";
+import StoreDetails from "./Components/StoreDetails";
 import Footer from "./Components/Footer";
 import SupplierDashboard from "./Components/SupplierDashboard";
 import AddProduct from "./Components/AddProduct";
@@ -70,7 +70,7 @@ const AppRoutes = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/store/:id" element={<StoreDetailsPage />} />
+        <Route path="/store/:id" element={<StoreDetails />} />
         
         {/* Protected Routes - Require Authentication */}
         <Route
