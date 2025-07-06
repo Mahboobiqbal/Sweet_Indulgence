@@ -1,104 +1,107 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2 import Error
 from contextlib import contextmanager
 import os
 from dotenv import load_dotenv
+from flask import g
 
 load_dotenv()
 
 # Database configuration
-DATABASE_CONFIG = {
+DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'sweet_indulgence'),
     'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'your_password'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_NAME', 'sweet_indulgence'),
     'port': os.getenv('DB_PORT', '5432')
 }
 
 def get_db():
-    """Get a database connection"""
+    """Get database connection"""
     try:
-        connection = psycopg2.connect(**DATABASE_CONFIG)
+        connection = psycopg2.connect(**DB_CONFIG)
+        connection.autocommit = False  # We want to control transactions
+        print(f"DEBUG: PostgreSQL connection established successfully")
         return connection
-    except psycopg2.Error as e:
-        print(f"Error connecting to database: {e}")
+    except Error as e:
+        print(f"Error connecting to PostgreSQL: {e}")
         raise
 
 @contextmanager
 def get_cursor():
-    """Get a cursor with RealDictCursor that returns results as dictionaries"""
-    connection = get_db()
+    """Context manager for database cursor with automatic cleanup"""
+    connection = None
+    cursor = None
     try:
-        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-            yield cursor
+        connection = get_db()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        print(f"DEBUG: Cursor created successfully")
+        yield cursor
+        # Commit after successful execution
+        connection.commit()
+        print(f"DEBUG: Transaction committed successfully")
     except Exception as e:
-        connection.rollback()
-        raise e
+        # Rollback on error
+        if connection:
+            connection.rollback()
+            print(f"DEBUG: Transaction rolled back due to error: {e}")
+        print(f"Database error: {e}")
+        raise
     finally:
-        connection.close()
+        if cursor:
+            cursor.close()
+            print(f"DEBUG: Cursor closed")
+        if connection:
+            connection.close()
+            print(f"DEBUG: Connection closed")
 
 def init_app(app):
     """Initialize database with Flask app"""
-    try:
-        # Test the database connection when the app starts
-        print("Testing database connection...")
+    app.teardown_appcontext(close_db)
+    
+    # Test connection on startup
+    with app.app_context():
         if test_connection():
-            print("Database connection successful!")
+            print("Database connection successful on startup")
         else:
-            print("Database connection failed!")
-            
-        # You can add any app-specific database initialization here
-        app.teardown_appcontext(close_db)
-        
-    except Exception as e:
-        print(f"Error initializing database with app: {e}")
-        raise
+            print("Warning: Database connection failed on startup")
 
 def close_db(error):
-    """Close database connection at the end of request"""
-    # This is called automatically by Flask
+    """Close database connection"""
+    # This function is called by Flask's teardown_appcontext
+    # Since we're using connection pooling through get_db(),
+    # individual connections are closed automatically
     pass
 
 def test_connection():
-    """Test database connection"""
+    """Test database connection and basic operations"""
     try:
         with get_cursor() as cursor:
-            cursor.execute("SELECT 1")
+            cursor.execute("SELECT 1 as test")
             result = cursor.fetchone()
-            print(f"Database connection test: {result}")
+            print(f"Database test successful: {result}")
             return True
     except Exception as e:
-        print(f"Database connection failed: {e}")
+        print(f"Database test failed: {e}")
         return False
 
 def init_db():
-    """Initialize the database with schema"""
+    """Initialize database with schema"""
     try:
-        # Read schema file
-        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-        with open(schema_path, 'r') as f:
-            schema = f.read()
-        
-        # Execute schema
         with get_cursor() as cursor:
+            # Read and execute schema
+            with open('database/schema.sql', 'r') as file:
+                schema = file.read()
+            
             cursor.execute(schema)
             print("Database initialized successfully")
             
-    except Exception as e:
+    except Error as e:
         print(f"Error initializing database: {e}")
-        raise
-
-def create_tables():
-    """Create database tables if they don't exist"""
-    try:
-        print("Creating database tables...")
-        init_db()
-        print("Database tables created successfully!")
-    except Exception as e:
-        print(f"Error creating tables: {e}")
         raise
 
 # Test the connection when the module is imported
 if __name__ == "__main__":
-    print("Testing database connection...")
+    print("Testing PostgreSQL connection...")
     test_connection()

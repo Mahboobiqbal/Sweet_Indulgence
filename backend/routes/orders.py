@@ -20,52 +20,60 @@ def get_user_orders():
         offset = (page - 1) * limit
         
         with get_cursor() as cursor:
-            # Get total count of user's orders
-            cursor.execute("""
-                SELECT COUNT(*) as total
-                FROM orders 
-                WHERE user_id = %s
-            """, (user_id,))
+            # First, let's check if there are ANY orders in the database
+            cursor.execute("SELECT COUNT(*) as total FROM orders")
+            all_orders = cursor.fetchone()
+            print(f"DEBUG: Total orders in database: {all_orders['total'] if all_orders else 0}")
             
+            # Check orders for this specific user
+            cursor.execute("SELECT COUNT(*) as total FROM orders WHERE user_id = %s", (user_id,))
             total_result = cursor.fetchone()
-            total_orders = total_result[0] if isinstance(total_result, tuple) else total_result['total']
+            total_orders = total_result['total'] if total_result else 0
             
-            print(f"DEBUG: Total orders count: {total_orders}")
+            print(f"DEBUG: Total orders count for user {user_id}: {total_orders}")
             
-            # Get user's orders with pagination
+            # If we have orders, fetch them
+            if total_orders > 0:
+                cursor.execute("""
+                    SELECT 
+                        o.order_id,
+                        o.total_amount,
+                        o.status,
+                        o.payment_status,
+                        o.payment_method,
+                        o.shipping_address,
+                        o.shipping_city,
+                        o.shipping_phone,
+                        o.order_notes,
+                        o.date_created,
+                        o.date_updated,
+                        s.name as store_name
+                    FROM orders o
+                    LEFT JOIN stores s ON o.store_id = s.store_id
+                    WHERE o.user_id = %s
+                    ORDER BY o.date_created DESC
+                    LIMIT %s OFFSET %s
+                """, (user_id, limit, offset))
+                
+                orders = cursor.fetchall()
+                print(f"DEBUG: Raw orders from DB: {orders}")
+            else:
+                orders = []
+            
+            # Let's also check recent orders regardless of user to see if orders are being saved at all
             cursor.execute("""
-                SELECT 
-                    o.order_id,
-                    o.total_amount,
-                    o.status,
-                    o.payment_status,
-                    o.payment_method,
-                    o.shipping_address,
-                    o.shipping_city,
-                    o.shipping_phone,
-                    o.order_notes,
-                    o.date_created,
-                    o.date_updated,
-                    s.name as store_name
-                FROM orders o
-                LEFT JOIN stores s ON o.store_id = s.store_id
-                WHERE o.user_id = %s
-                ORDER BY o.date_created DESC
-                LIMIT %s OFFSET %s
-            """, (user_id, limit, offset))
-            
-            orders = cursor.fetchall()
-            
-            print(f"DEBUG: Raw orders from DB: {orders}")
+                SELECT order_id, user_id, total_amount, date_created 
+                FROM orders 
+                ORDER BY date_created DESC 
+                LIMIT 5
+            """)
+            recent_orders = cursor.fetchall()
+            print(f"DEBUG: Recent orders in database: {recent_orders}")
             
             # Convert to list of dictionaries
             orders_list = []
             for order in orders:
-                if isinstance(order, dict):
-                    order_data = order
-                else:
-                    columns = [desc[0] for desc in cursor.description]
-                    order_data = dict(zip(columns, order))
+                order_data = dict(order) if isinstance(order, dict) else dict(order)
                 
                 orders_list.append({
                     'order_id': order_data['order_id'],
@@ -129,8 +137,8 @@ def create_order():
         user_id = get_jwt_identity()
         data = request.json
         
-        print(f"DEBUG: Creating order for user: {user_id}")
-        print(f"DEBUG: Order data: {data}")
+        print(f"DEBUG: Starting order creation for user: {user_id}")
+        print(f"DEBUG: Order data received: {data}")
         
         # Validate required fields
         required_fields = ['items', 'total_amount', 'shipping_address', 'shipping_city', 'shipping_phone']
@@ -144,6 +152,7 @@ def create_order():
         # Generate order ID
         import uuid
         order_id = str(uuid.uuid4())
+        print(f"DEBUG: Generated order ID: {order_id}")
         
         # Get customer details
         customer_name = data.get('customer_name', 'Customer')
@@ -152,10 +161,15 @@ def create_order():
         order_notes = data.get('order_notes', '')
         
         with get_cursor() as cursor:
-            # Get the store_id from the first product (assuming all items are from same store for now)
+            print(f"DEBUG: Cursor obtained successfully")
+            
+            # Get the store_id from the first product
             first_item = data['items'][0]
+            print(f"DEBUG: Looking up store for product: {first_item['product_id']}")
+            
             cursor.execute("SELECT store_id FROM products WHERE product_id = %s", (first_item['product_id'],))
             store_result = cursor.fetchone()
+            print(f"DEBUG: Store lookup result: {store_result}")
             
             if not store_result:
                 return jsonify({
@@ -163,7 +177,8 @@ def create_order():
                     'message': 'Product not found'
                 }), 404
             
-            store_id = store_result['store_id'] if isinstance(store_result, dict) else store_result[0]
+            store_id = store_result['store_id']
+            print(f"DEBUG: Using store_id: {store_id}")
             
             # Create the order
             cursor.execute("""
@@ -171,19 +186,23 @@ def create_order():
                     order_id, user_id, store_id, total_amount, status, payment_status,
                     payment_method, shipping_address, shipping_city, shipping_phone,
                     order_notes, date_created, date_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             """, (
                 order_id, user_id, store_id, data['total_amount'], 'pending', 'paid',
                 payment_method, data['shipping_address'], data['shipping_city'], 
                 data['shipping_phone'], order_notes
             ))
             
+            print(f"DEBUG: Order inserted, affected rows: {cursor.rowcount}")
+            
             # Create order items
-            for item in data['items']:
+            for i, item in enumerate(data['items']):
                 order_item_id = str(uuid.uuid4())
                 unit_price = item['unit_price']
                 quantity = item['quantity']
                 total_price = unit_price * quantity
+                
+                print(f"DEBUG: Inserting order item {i+1}: {order_item_id}")
                 
                 cursor.execute("""
                     INSERT INTO order_items (
@@ -194,6 +213,8 @@ def create_order():
                     quantity, unit_price, total_price
                 ))
                 
+                print(f"DEBUG: Order item {i+1} inserted, affected rows: {cursor.rowcount}")
+                
                 # Update product stock
                 cursor.execute("""
                     UPDATE products 
@@ -201,14 +222,15 @@ def create_order():
                     WHERE product_id = %s AND stock_quantity >= %s
                 """, (quantity, item['product_id'], quantity))
                 
-                # Check if stock update was successful
+                print(f"DEBUG: Stock update affected rows: {cursor.rowcount}")
+                
                 if cursor.rowcount == 0:
                     return jsonify({
                         'success': False,
                         'message': f'Insufficient stock for product {item["product_id"]}'
                     }), 400
         
-        print(f"DEBUG: Order created successfully: {order_id}")
+        print(f"DEBUG: Order creation completed successfully: {order_id}")
         
         return jsonify({
             'success': True,
@@ -224,7 +246,7 @@ def create_order():
         }), 201
         
     except Exception as e:
-        print(f"Error creating order: {e}")
+        print(f"ERROR: Order creation failed: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -592,4 +614,51 @@ def get_order_stats():
         return jsonify({
             'success': False,
             'message': f'Error fetching order stats: {str(e)}'
+        }), 500
+
+@orders_bp.route('/test-db', methods=['POST'])
+@jwt_required()
+def test_database_operations():
+    """Test endpoint to verify database operations"""
+    try:
+        user_id = get_jwt_identity()
+        
+        with get_cursor() as cursor:
+            # Test insert
+            test_order_id = 'test-order-123'
+            cursor.execute("""
+                INSERT INTO orders (
+                    order_id, user_id, store_id, total_amount, status, payment_status,
+                    payment_method, shipping_address, shipping_city, shipping_phone,
+                    order_notes, date_created, date_updated
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            """, (
+                test_order_id, user_id, 'test-store', 100.00, 'pending', 'paid',
+                'Test', 'Test Address', 'Test City', '1234567890', 'Test order'
+            ))
+            
+            print(f"DEBUG: Test order inserted, affected rows: {cursor.rowcount}")
+            
+            # Test select
+            cursor.execute("SELECT * FROM orders WHERE order_id = %s", (test_order_id,))
+            result = cursor.fetchone()
+            print(f"DEBUG: Test order retrieved: {result}")
+            
+            # Clean up
+            cursor.execute("DELETE FROM orders WHERE order_id = %s", (test_order_id,))
+            print(f"DEBUG: Test order deleted, affected rows: {cursor.rowcount}")
+            
+        return jsonify({
+            'success': True,
+            'message': 'Database test completed successfully',
+            'result': result
+        }), 200
+        
+    except Exception as e:
+        print(f"ERROR: Database test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Database test failed: {str(e)}'
         }), 500
