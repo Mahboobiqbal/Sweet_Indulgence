@@ -1,17 +1,90 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import mockStores from "../data/mockStores";
+import BakeHouseImage from "../assets/BakeHouse.png"; // Import the default image
 
 const Home = () => {
   const [stores, setStores] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showVideo, setShowVideo] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const videoRef = useRef(null);
   const navigate = useNavigate();
 
+  // Fetch stores from database
   useEffect(() => {
-    setStores(mockStores);
+    const fetchStores = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch stores ordered by product count (top 5)
+        const response = await fetch('http://localhost:5000/api/stores/top-stores?limit=5');
+        const data = await response.json();
+        
+        if (data.success) {
+          setStores(data.stores || []);
+        } else {
+          console.error('Failed to fetch stores:', data.message);
+        }
+      } catch (err) {
+        console.error('Error fetching stores:', err);
+        setError('Failed to load stores');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStores();
   }, []);
+
+  // Fetch featured products from database
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        // Fetch featured products (limit 6)
+        const response = await fetch('http://localhost:5000/api/products?is_featured=true&limit=6');
+        const data = await response.json();
+        
+        if (data.success) {
+          setFeaturedProducts(data.products || []);
+        } else {
+          console.error('Failed to fetch featured products:', data.message);
+        }
+      } catch (err) {
+        console.error('Error fetching featured products:', err);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
+
+  // Helper functions
+  const getProductImageUrl = (product) => {
+    if (product.image_url && product.image_url.trim() !== '') {
+      if (product.image_url.startsWith("/uploads/")) {
+        return `http://localhost:5000${product.image_url}`;
+      }
+      if (product.image_url.startsWith("http")) {
+        return product.image_url;
+      }
+      return `http://localhost:5000/${product.image_url}`;
+    }
+    return "https://via.placeholder.com/300x300/f5e6d3/5e3023?text=No+Image";
+  };
+
+  const getStoreImageUrl = (store) => {
+    // Always use the default BakeHouse.png image for stores
+    return BakeHouseImage;
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'PKR',
+      minimumFractionDigits: 0,
+    }).format(price).replace('PKR', 'Rs.');
+  };
 
   const handlePlayPause = (e) => {
     e.stopPropagation();
@@ -93,16 +166,16 @@ const Home = () => {
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center bg-black/30 p-8 rounded-lg backdrop-blur-sm max-w-3xl">
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                Welcome to Bake House
+                Welcome to Sweet Indulgence
               </h1>
               <p className="text-xl text-white mb-6">
                 Crafting sweet memories, one cake at a time
               </p>
               <button
                 className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-3 rounded-full font-bold transition-all duration-300 transform hover:scale-105"
-                onClick={() => navigate("/about")}
+                onClick={() => navigate("/products")}
               >
-                Discover Our Story
+                Explore Our Products
               </button>
             </div>
           </div>
@@ -165,30 +238,24 @@ const Home = () => {
           <div className="flex-grow border-t border-[#e7dcca] ml-4"></div>
         </div>
         <p className="text-[#8c5f53] leading-relaxed text-lg">
-          The Bake House Inc is the official smiles provider in Swat. We sell
-          the best cakes in Swat. Our cakes are handcrafted with the finest
-          ingredients, attention, and pure love. Our customized cakes are the
-          best in Swat and are a showstopper at every party. Our wedding cakes,
-          birthday cakes, anniversary cakes, and picture-printed cakes not only
-          look beautiful but also taste amazing. For the best customized cake
-          delivery, order at the Baketown.
+          Sweet Indulgence is your premier destination for exquisite baked goods and custom desserts. 
+          We pride ourselves on creating the finest cakes, pastries, and sweet treats using only the 
+          highest quality ingredients. Our skilled bakers craft each item with attention to detail and 
+          pure love, ensuring every bite is a memorable experience.
           <br />
-          Our major products are customized cakes, regular cakes, fresh tea
-          cakes, brownies, fresh cookies, hot pies, cheesecakes, and gift
-          baskets. Our tea-time desserts like fudge brownies, cookies, tarts,
-          and pies are the talk of the town, and they reach you fresh and warm
-          whenever you order them, as we bake fresh desserts and don't sell
-          pre-baked ones.
           <br />
-          Our gift platters and gift baskets are the best way to send good
-          wishes to your loved ones and cheer them up. We have gift baskets
-          available for Eid, New Year, birthday, and wedding celebrations. Give
-          us a try, and you won't be disappointed that's a guarantee.
+          From custom birthday cakes to elegant wedding desserts, from daily fresh pastries to 
+          special occasion treats, we have something to satisfy every sweet craving. Our commitment 
+          to freshness means we bake daily and never compromise on quality.
+          <br />
+          <br />
+          Visit our stores or browse our online selection to discover why Sweet Indulgence has 
+          become the trusted choice for celebrations and everyday indulgences.
         </p>
       </div>
 
       {/* Featured Products section */}
-      <div className="max-w-6xl mx-auto mb-16">
+      <div className="max-w-6xl mx-auto mb-16 px-4">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-[#5e3023] mb-2">
             Featured Products
@@ -198,100 +265,196 @@ const Home = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            {
-              name: "Chocolate Truffle Cake",
-              image: "./src/assets/chocolate.jpg",
-              price: "Rs. 2,500",
-            },
-            {
-              name: "Fresh Fruit Tart",
-              image: "./src/assets/tower.png",
-              price: "Rs. 1,800",
-            },
-            {
-              name: "Birthday Special Cake",
-              image: "./src/assets/love.jpg",
-              price: "Rs. 3,200",
-            },
-          ].map((product, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all duration-300"
-            >
-              <div className="h-64 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-[#5e3023] mb-2">
-                  {product.name}
-                </h3>
-                <p className="text-[#d3756b] font-medium mb-4">
-                  {product.price}
-                </p>
-                {/* Updated button to navigate to products page */}
-                <button
-                  className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-2 rounded-lg font-medium transition-colors"
-                  onClick={() => navigate("/products")}
-                >
-                  Order Now
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Featured stores section */}
-      <div className="text-center mb-10 px-4">
-        <h2 className="text-3xl font-bold text-[#5e3023] mb-2">Our Stores</h2>
-        <p className="text-[#8c5f53] mb-10">
-          Discover our bakeries across Pakistan
-        </p>
-
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {stores.map((store) => (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3756b] mx-auto mb-4"></div>
+            <p className="text-[#8c5f53]">Loading featured products...</p>
+          </div>
+        ) : featuredProducts.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredProducts.map((product) => (
               <div
-                key={store.id}
-                className="rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col"
-                onClick={() => navigate(`/store/${store.id}`, { state: store })}
+                key={product.product_id}
+                className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all duration-300 cursor-pointer"
+                onClick={() => navigate(`/product/${product.product_id}`)}
               >
-                {/* Image container with fixed height */}
-                <div className="h-64 w-full relative overflow-hidden">
+                <div className="h-64 overflow-hidden relative">
                   <img
-                    src={store.image}
-                    alt={store.name}
+                    src={getProductImageUrl(product)}
+                    alt={product.name}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      e.target.src = BakeHouseImage;
+                    }}
                   />
-                </div>
-
-                {/* Content container */}
-                <div className="bg-white p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-semibold text-[#5e3023] mb-2">
-                    {store.name}
-                  </h3>
-                  <p className="text-[#8c5f53] mb-4">{store.location}</p>
-                  <div className="mt-auto">
-                    <button
-                      className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-3 rounded-md font-medium transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/store/${store.id}`, { state: store });
-                      }}
-                    >
-                      View Store
-                    </button>
+                  
+                  {/* Featured Badge */}
+                  <div className="absolute top-2 left-2">
+                    <span className="bg-[#d3756b] text-white text-xs px-2 py-1 rounded-full font-medium">
+                      ⭐ Featured
+                    </span>
                   </div>
+
+                  {/* Sale Badge */}
+                  {product.sale_price && (
+                    <div className="absolute top-2 right-2">
+                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                        Sale
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-[#5e3023] mb-2 line-clamp-1">
+                    {product.name}
+                  </h3>
+                  <p className="text-[#8c5f53] mb-4 line-clamp-2">
+                    {product.description}
+                  </p>
+                  
+                  {/* Price */}
+                  <div className="flex items-center justify-between mb-4">
+                    {product.sale_price ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-[#d3756b]">
+                          {formatPrice(product.sale_price)}
+                        </span>
+                        <span className="text-sm text-gray-500 line-through">
+                          {formatPrice(product.price)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-lg font-bold text-[#5e3023]">
+                        {formatPrice(product.price)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Store name */}
+                  <div className="text-xs text-[#8c5f53] mb-4">
+                    <span className="font-medium">
+                      {product.store_name || 'Sweet Indulgence'}
+                    </span>
+                  </div>
+
+                  <button
+                    className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-2 rounded-lg font-medium transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/product/${product.product_id}`);
+                    }}
+                  >
+                    View Details
+                  </button>
                 </div>
               </div>
             ))}
           </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-[#8c5f53] mb-4">No featured products available at the moment.</p>
+            <button
+              className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              onClick={() => navigate("/products")}
+            >
+              Browse All Products
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Top Stores section */}
+      <div className="text-center mb-10 px-4">
+        <h2 className="text-3xl font-bold text-[#5e3023] mb-2">Top Stores</h2>
+        <p className="text-[#8c5f53] mb-10">
+          Discover our most popular bakeries with the widest selection
+        </p>
+
+        <div className="max-w-6xl mx-auto">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3756b] mx-auto mb-4"></div>
+              <p className="text-[#8c5f53]">Loading stores...</p>
+            </div>
+          ) : stores.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {stores.map((store) => (
+                <div
+                  key={store.store_id}
+                  className="rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col group"
+                  onClick={() => navigate(`/store/${store.store_id}`, { state: store })}
+                >
+                  {/* Image container with fixed height */}
+                  <div className="h-64 w-full relative overflow-hidden">
+                    <img
+                      src={getStoreImageUrl(store)}
+                      alt={store.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        e.target.src = BakeHouseImage;
+                      }}
+                    />
+                    
+                    {/* Store badge overlay */}
+                    <div className="absolute top-2 left-2">
+                      <span className="bg-[#d3756b] text-white text-xs px-2 py-1 rounded-full font-medium">
+                        🏪 Top Store
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Content container */}
+                  <div className="bg-white p-6 flex flex-col flex-grow">
+                    <h3 className="text-xl font-semibold text-[#5e3023] mb-2">
+                      {store.name}
+                    </h3>
+                    <p className="text-[#8c5f53] mb-2">
+                      📍 {store.city || store.address || 'Location not specified'}
+                    </p>
+                    <p className="text-sm text-[#8c5f53] mb-4 line-clamp-2">
+                      {store.description || `Welcome to ${store.name}! We offer the finest selection of freshly baked goods and custom treats made with love and premium ingredients.`}
+                    </p>
+                    
+                    {/* Store stats */}
+                    <div className="flex items-center justify-between text-sm text-[#8c5f53] mb-4">
+                      <span>📦 {store.product_count || 0} Products</span>
+                      <span>⭐ {store.avg_rating ? parseFloat(store.avg_rating).toFixed(1) : '5.0'}</span>
+                    </div>
+                    
+                    {/* Store contact info */}
+                    {store.phone && (
+                      <div className="text-xs text-[#8c5f53] mb-2">
+                        📞 {store.phone}
+                      </div>
+                    )}
+                    
+                    <div className="mt-auto">
+                      <button
+                        className="w-full bg-[#d3756b] hover:bg-[#c25d52] text-white py-3 rounded-md font-medium transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/store/${store.store_id}`, { state: store });
+                        }}
+                      >
+                        View Store
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-[#8c5f53] mb-4">No stores available at the moment.</p>
+              <button
+                className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                onClick={() => navigate("/products")}
+              >
+                Browse Products
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -327,7 +490,7 @@ const Home = () => {
                 />
                 <div className="text-left">
                   <h4 className="font-bold text-[#5e3023]">Amina Tahir</h4>
-                  <p className="text-sm text-[#8c5f53]">Islamabad</p>
+                  <p className="text-sm text-[#8c5f53]">Happy Customer</p>
                 </div>
               </div>
             </div>

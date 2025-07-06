@@ -553,3 +553,60 @@ def get_store_schema():
             'success': False,
             'message': f'Error: {str(e)}'
         })
+
+@stores_bp.route('/top-stores', methods=['GET'])
+def get_top_stores():
+    """Get top stores by product count"""
+    try:
+        limit = request.args.get('limit', 5, type=int)
+        
+        with get_cursor() as cursor:
+            # Get stores with their product count, ordered by product count desc
+            sql = """
+                SELECT s.store_id, s.name, s.description, s.address, s.city, 
+                       s.phone, s.email, s.logo_url, s.hero_image_url, 
+                       s.avg_rating, s.date_created,
+                       COUNT(p.product_id) as product_count
+                FROM stores s
+                LEFT JOIN products p ON s.store_id = p.store_id AND p.is_active = true
+                WHERE s.is_active = true
+                GROUP BY s.store_id, s.name, s.description, s.address, s.city, 
+                         s.phone, s.email, s.logo_url, s.hero_image_url, 
+                         s.avg_rating, s.date_created
+                ORDER BY product_count DESC, s.date_created DESC
+                LIMIT %s
+            """
+            
+            cursor.execute(sql, (limit,))
+            stores = cursor.fetchall()
+            
+            # Convert to list of dictionaries
+            stores_list = []
+            for store in stores:
+                stores_list.append({
+                    'store_id': store['store_id'],
+                    'name': store['name'],
+                    'description': store['description'],
+                    'address': store['address'],
+                    'city': store['city'],
+                    'phone': store['phone'],
+                    'email': store['email'],
+                    'logo_url': store['logo_url'],
+                    'hero_image_url': store['hero_image_url'],
+                    'avg_rating': float(store['avg_rating']) if store['avg_rating'] else 0.0,
+                    'date_created': store['date_created'].isoformat() if store['date_created'] else None,
+                    'product_count': store['product_count']
+                })
+            
+            return jsonify({
+                'success': True,
+                'stores': stores_list,
+                'total': len(stores_list)
+            })
+            
+    except Exception as e:
+        print(f"Error fetching top stores: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error fetching top stores: {str(e)}'
+        }), 500
