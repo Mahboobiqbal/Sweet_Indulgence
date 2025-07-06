@@ -31,10 +31,19 @@ const Navbar = () => {
     <nav className="bg-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
           <div className="flex-shrink-0">
-            <Link to="/" className="text-2xl font-bold text-[#d3756b]" onClick={closeMenu}>
-              Back House
+            <Link to="/" className="flex items-center" onClick={closeMenu}>
+              <img
+                src="BakeHouse.png"
+                alt="Bake House Logo"
+                className="h-8 w-8 mr-2"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+              {/* <span className="text-2xl font-bold text-[#d3756b]">
+              Bake House
+              </span> */}
             </Link>
           </div>
 
