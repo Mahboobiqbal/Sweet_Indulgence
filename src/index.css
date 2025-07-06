@@ -30,6 +30,33 @@ body {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Smooth scrolling for carousel */
+.carousel-container {
+  scroll-behavior: smooth;
+}
+
+/* Line clamp utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
 /* Custom utility classes */
 @layer components {
   .btn-primary {
@@ -42,5 +69,10 @@ body {
   
   .card {
     @apply bg-white rounded-lg shadow-md p-6;
+  }
+  
+  .carousel-scroll {
+    @apply flex gap-8 overflow-x-auto scrollbar-hide px-4 py-2;
+    scroll-behavior: smooth;
   }
 }

@@ -28,7 +28,6 @@ import ProductDetails from "./Components/ProductDetsils";
 import Payment from "./Components/Payment";
 import Wishlist from "./Components/WishList";
 import Cart from "./Components/Cart";
-import StorePage from './Components/StorePage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -70,7 +69,9 @@ const AppRoutes = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/store/:id" element={<StoreDetails />} />
+        
+        {/* Public Store Details Route - MUST come before protected routes */}
+        <Route path="/store/:storeId" element={<StoreDetails />} />
         
         {/* Protected Routes - Require Authentication */}
         <Route
@@ -188,16 +189,6 @@ const AppRoutes = () => {
               <StoreCreationPage />
             </ProtectedRoute>
           }
-        />
-
-        {/* New Route - Public Access */}
-        <Route 
-          path="/store/:storeId" 
-          element={
-            <ProtectedRoute requireAuth={false}>
-              <StorePage />
-            </ProtectedRoute>
-          } 
         />
 
         {/* Catch all route - redirect based on auth status */}

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from database.db import get_cursor, get_db
 import uuid
 from datetime import datetime
@@ -350,41 +350,42 @@ def test_db_connection():
             'error': str(e)
         })
 
+# SINGLE ROUTE for store details - works for both authenticated and public access
 @stores_bp.route('/<store_id>', methods=['GET'])
-@jwt_required()
 def get_store_details(store_id):
-    """Get detailed store information by store ID"""
+    """Get detailed store information by store ID - Works for both authenticated and public access"""
     try:
-        user_id = get_jwt_identity()
+        print(f"DEBUG: Received request for store_id: {store_id}")
+        
+        # Try to get JWT token, but don't require it
+        user_id = None
+        try:
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            print(f"DEBUG: User authenticated: {user_id}")
+        except:
+            print("DEBUG: No authentication provided, continuing as public user")
+            pass  # No token or invalid token, continue as public user
         
         with get_cursor() as cursor:
-            # Get store information with user role check
+            # Get store information
             sql = """
                 SELECT s.store_id, s.owner_id, s.name, s.description, s.address, s.city, 
                        s.phone, s.email, s.logo_url, s.hero_image_url, s.opening_hours, 
-                       s.is_active, s.date_created, s.avg_rating, u.role 
+                       s.is_active, s.date_created, s.avg_rating
                 FROM stores s
-                JOIN users u ON u.user_id = %s
-                WHERE s.store_id = %s
+                WHERE s.store_id = %s AND s.is_active = true
             """
-            cursor.execute(sql, (user_id, store_id))
+            cursor.execute(sql, (store_id,))
             result = cursor.fetchone()
+            
+            print(f"DEBUG: Store query result: {result}")
             
             if not result:
                 return jsonify({
                     'success': False,
                     'message': 'Store not found'
                 }), 404
-            
-            # Access by key for RealDictRow
-            user_role = result['role']
-            store_owner_id = result['owner_id']
-            
-            if user_role == 'supplier' and store_owner_id != user_id:
-                return jsonify({
-                    'success': False,
-                    'message': 'You can only view your own store'
-                }), 403
             
             # Parse opening hours from JSONB
             opening_hours = result['opening_hours']
@@ -405,7 +406,7 @@ def get_store_details(store_id):
                     "Sunday": "Closed"
                 }
             
-            # Prepare store data using key access
+            # Prepare store data
             store_data = {
                 'store_id': result['store_id'],
                 'owner_id': result['owner_id'],
@@ -422,6 +423,8 @@ def get_store_details(store_id):
                 'date_created': result['date_created'].isoformat() if result['date_created'] else None,
                 'avg_rating': float(result['avg_rating']) if result['avg_rating'] else 0.0
             }
+            
+            print(f"DEBUG: Returning store data: {store_data}")
             
             return jsonify({
                 'success': True,
@@ -611,77 +614,41 @@ def get_top_stores():
             'message': f'Error fetching top stores: {str(e)}'
         }), 500
 
-# Add this route (or modify the existing one) to allow public access to store details
-
-@stores_bp.route('/<store_id>', methods=['GET'])
-def get_store_details_public(store_id):
-    """Get detailed store information by store ID - Public endpoint"""
+@stores_bp.route('/test-api/<store_id>', methods=['GET'])
+def test_store_api(store_id):
+    """Test endpoint to debug store API issues"""
     try:
+        print(f"TEST: Received request for store_id: {store_id}")
+        
         with get_cursor() as cursor:
-            # Get store information
-            sql = """
-                SELECT s.store_id, s.owner_id, s.name, s.description, s.address, s.city, 
-                       s.phone, s.email, s.logo_url, s.hero_image_url, s.opening_hours, 
-                       s.is_active, s.date_created, s.avg_rating
-                FROM stores s
-                WHERE s.store_id = %s AND s.is_active = true
-            """
-            cursor.execute(sql, (store_id,))
-            result = cursor.fetchone()
+            # Simple test query
+            cursor.execute("SELECT COUNT(*) as count FROM stores WHERE is_active = true")
+            total_stores = cursor.fetchone()
+            print(f"TEST: Total active stores: {total_stores}")
             
-            if not result:
-                return jsonify({
-                    'success': False,
-                    'message': 'Store not found'
-                }), 404
+            # Test specific store query
+            cursor.execute("SELECT store_id, name, city FROM stores WHERE store_id = %s", (store_id,))
+            store_result = cursor.fetchone()
+            print(f"TEST: Store query result: {store_result}")
             
-            # Parse opening hours from JSONB
-            opening_hours = result['opening_hours']
-            if opening_hours:
-                if isinstance(opening_hours, str):
-                    try:
-                        opening_hours = json.loads(opening_hours)
-                    except:
-                        opening_hours = {"general": opening_hours}
-            else:
-                opening_hours = {
-                    "Monday": "9:00 AM - 6:00 PM",
-                    "Tuesday": "9:00 AM - 6:00 PM",
-                    "Wednesday": "9:00 AM - 6:00 PM",
-                    "Thursday": "9:00 AM - 6:00 PM",
-                    "Friday": "9:00 AM - 6:00 PM",
-                    "Saturday": "10:00 AM - 4:00 PM",
-                    "Sunday": "Closed"
-                }
-            
-            # Prepare store data
-            store_data = {
-                'store_id': result['store_id'],
-                'owner_id': result['owner_id'],
-                'name': result['name'],
-                'description': result['description'],
-                'address': result['address'],
-                'city': result['city'],
-                'phone': result['phone'],
-                'email': result['email'],
-                'logo_url': result['logo_url'],
-                'hero_image_url': result['hero_image_url'],
-                'opening_hours': opening_hours,
-                'is_active': result['is_active'],
-                'date_created': result['date_created'].isoformat() if result['date_created'] else None,
-                'avg_rating': float(result['avg_rating']) if result['avg_rating'] else 0.0
-            }
+            # Test all stores to see what's available
+            cursor.execute("SELECT store_id, name, city FROM stores WHERE is_active = true LIMIT 5")
+            all_stores = cursor.fetchall()
+            print(f"TEST: All active stores: {all_stores}")
             
             return jsonify({
                 'success': True,
-                'store': store_data
-            }), 200
+                'message': 'Test successful',
+                'store_id_requested': store_id,
+                'total_active_stores': total_stores['count'] if total_stores else 0,
+                'store_found': store_result is not None,
+                'store_data': dict(store_result) if store_result else None,
+                'sample_stores': [dict(store) for store in all_stores]
+            })
             
     except Exception as e:
-        print(f"Error fetching store details: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"TEST ERROR: {e}")
         return jsonify({
             'success': False,
-            'message': f'Error fetching store details: {str(e)}'
-        }), 500
+            'error': str(e)
+        })

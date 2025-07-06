@@ -11,49 +11,75 @@ const StoreDetails = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log('StoreDetails component mounted with storeId:', storeId);
+    
     if (storeId) {
       fetchStoreDetails();
       fetchStoreProducts();
+    } else {
+      console.error('No storeId provided');
+      setError('No store ID provided');
+      setLoading(false);
     }
   }, [storeId]);
 
   const fetchStoreDetails = async () => {
     try {
+      console.log('Fetching store details for ID:', storeId);
       const response = await fetch(`http://localhost:5000/api/stores/${storeId}`);
-
+      console.log('Store details response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
+        console.log('Store details response data:', data);
+        
+        if (data.success && data.store) {
           setStore(data.store);
+          console.log('Store data set successfully:', data.store);
         } else {
+          console.error('Store API returned success=false or no store data:', data);
           setError(data.message || 'Failed to fetch store details');
         }
       } else {
-        setError('Failed to fetch store details');
+        console.error('Store details API failed with status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        setError(`Failed to fetch store details (${response.status})`);
       }
     } catch (err) {
-      console.error('Error fetching store:', err);
-      setError('Error loading store details');
+      console.error('Error fetching store details:', err);
+      setError('Error loading store details: ' + err.message);
     }
   };
 
   const fetchStoreProducts = async () => {
     try {
+      console.log('Fetching products for store ID:', storeId);
       const response = await fetch(`http://localhost:5000/api/products?store_id=${storeId}`);
+      console.log('Products response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Products response data:', data);
+        
         if (data.success) {
           setProducts(data.products || []);
+          console.log('Products set successfully:', data.products?.length || 0, 'products');
         } else {
-          console.error('Failed to fetch products:', data.message);
+          console.error('Products API returned success=false:', data);
+          setProducts([]);
         }
       } else {
-        console.error('Failed to fetch products');
+        console.error('Products API failed with status:', response.status);
+        const errorText = await response.text();
+        console.error('Products error response:', errorText);
+        setProducts([]);
       }
     } catch (err) {
       console.error('Error fetching products:', err);
+      setProducts([]);
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
     }
   };
@@ -79,12 +105,15 @@ const StoreDetails = () => {
     }).format(price).replace('PKR', 'Rs.');
   };
 
+  console.log('Render state:', { loading, error, store: !!store, productsCount: products.length });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fff9f5] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3756b] mx-auto"></div>
           <p className="mt-4 text-[#8c5f53]">Loading store details...</p>
+          <p className="mt-2 text-sm text-[#8c5f53]">Store ID: {storeId}</p>
         </div>
       </div>
     );
@@ -93,15 +122,24 @@ const StoreDetails = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-[#fff9f5] flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <h2 className="text-2xl font-bold text-[#5e3023] mb-4">Error</h2>
           <p className="text-[#8c5f53] mb-4">{error}</p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            Go Home
-          </button>
+          <p className="text-sm text-[#8c5f53] mb-6">Store ID: {storeId}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-2 rounded-lg transition-colors mr-3"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Go Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -113,6 +151,7 @@ const StoreDetails = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-[#5e3023] mb-4">Store Not Found</h2>
           <p className="text-[#8c5f53] mb-4">The store you're looking for doesn't exist.</p>
+          <p className="text-sm text-[#8c5f53] mb-6">Store ID: {storeId}</p>
           <button
             onClick={() => navigate('/')}
             className="bg-[#d3756b] hover:bg-[#c25d52] text-white px-6 py-2 rounded-lg transition-colors"
@@ -125,21 +164,21 @@ const StoreDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fff9f5] py-8">
+    <div className="min-h-screen bg-[#fff9f5] py-8 ">
       {/* Store Header */}
-      <div className="max-w-6xl mx-auto px-4 mb-8">
+      <div className="max-w-6xl mx-auto px-4 mb-8 mt-16">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Store Banner */}
           <div className="h-64 relative">
             <img
-              src={BakeHouseImage}
+              src={store.hero_image_url || BakeHouseImage}
               alt={store.name}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/30"></div>
             <div className="absolute bottom-6 left-6 text-white">
               <h1 className="text-4xl font-bold mb-2">{store.name}</h1>
-              <p className="text-lg opacity-90">📍 {store.city}</p>
+              <p className="text-lg opacity-90">📍 {store.city || store.address}</p>
             </div>
           </div>
 
@@ -152,10 +191,12 @@ const StoreDetails = () => {
                   {store.description || `Welcome to ${store.name}! We specialize in creating delicious baked goods with love and care.`}
                 </p>
                 
-                <div className="flex items-center text-[#8c5f53] mb-2">
-                  <span className="font-semibold mr-2">📍 Address:</span>
-                  <span>{store.address}</span>
-                </div>
+                {store.address && (
+                  <div className="flex items-center text-[#8c5f53] mb-2">
+                    <span className="font-semibold mr-2">📍 Address:</span>
+                    <span>{store.address}</span>
+                  </div>
+                )}
                 
                 {store.phone && (
                   <div className="flex items-center text-[#8c5f53] mb-2">
@@ -173,7 +214,7 @@ const StoreDetails = () => {
                 
                 <div className="flex items-center text-[#8c5f53] mb-2">
                   <span className="font-semibold mr-2">⭐ Rating:</span>
-                  <span>{store.avg_rating ? store.avg_rating.toFixed(1) : '5.0'} / 5.0</span>
+                  <span>{store.avg_rating ? parseFloat(store.avg_rating).toFixed(1) : '5.0'} / 5.0</span>
                 </div>
               </div>
 
@@ -183,13 +224,13 @@ const StoreDetails = () => {
                   <div className="space-y-2">
                     {Object.entries(store.opening_hours).map(([day, hours]) => (
                       <div key={day} className="flex justify-between text-[#8c5f53]">
-                        <span className="font-medium">{day}:</span>
+                        <span className="font-medium capitalize">{day}:</span>
                         <span>{hours}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-[#8c5f53]">
+                  <div className="text-[#8c5f53] space-y-1">
                     <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
                     <p>Saturday: 10:00 AM - 4:00 PM</p>
                     <p>Sunday: Closed</p>

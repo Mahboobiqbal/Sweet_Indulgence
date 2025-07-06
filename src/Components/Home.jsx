@@ -210,7 +210,7 @@ const Home = () => {
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center bg-black/30 p-8 rounded-lg backdrop-blur-sm max-w-3xl">
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                Welcome to Sweet Indulgence
+                Welcome to Back House
               </h1>
               <p className="text-xl text-white mb-6">
                 Crafting sweet memories, one cake at a time
@@ -228,7 +228,7 @@ const Home = () => {
         <div className="w-full h-96 mb-12 rounded-lg shadow-lg bg-[#f8e8e0] flex items-center justify-center relative">
           <div className="text-center p-8">
             <h1 className="text-4xl font-bold text-[#5e3023] mb-4">
-              Welcome to Sweet Indulgence
+              Welcome to Back House
             </h1>
             <p className="text-xl text-[#8c5f53] mb-6">
               Crafting sweet memories, one cake at a time
@@ -265,7 +265,7 @@ const Home = () => {
           <div className="absolute inset-0 -z-10 overflow-hidden rounded-lg">
             <img
               src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1689&q=80"
-              alt="Sweet Indulgence Bakery"
+              alt="Back House Bakery"
               className="w-full h-full object-cover opacity-30"
             />
           </div>
@@ -282,18 +282,18 @@ const Home = () => {
           <div className="flex-grow border-t border-[#e7dcca] ml-4"></div>
         </div>
         <p className="text-[#8c5f53] leading-relaxed text-lg">
-          Sweet Indulgence is your premier destination for exquisite baked goods and custom desserts. 
+          Back House is your premier destination for exquisite baked goods and custom desserts. 
           We pride ourselves on creating the finest cakes, pastries, and sweet treats using only the 
           highest quality ingredients. Our skilled bakers craft each item with attention to detail and 
           pure love, ensuring every bite is a memorable experience.
           <br />
-          <br />
+
           From custom birthday cakes to elegant wedding desserts, from daily fresh pastries to 
           special occasion treats, we have something to satisfy every sweet craving. Our commitment 
           to freshness means we bake daily and never compromise on quality.
           <br />
-          <br />
-          Visit our stores or browse our online selection to discover why Sweet Indulgence has 
+
+          Visit our stores or browse our online selection to discover why Back House has 
           become the trusted choice for celebrations and everyday indulgences.
         </p>
       </div>
@@ -428,7 +428,7 @@ const Home = () => {
                       {/* Store name */}
                       <div className="text-xs text-[#8c5f53] mb-4">
                         <span className="font-medium">
-                          {product.store_name || 'Sweet Indulgence'}
+                          {product.store_name || 'Back House'}
                         </span>
                       </div>
 
@@ -483,6 +483,7 @@ const Home = () => {
           <h2 className="text-2xl md:text-3xl font-bold text-[#5e3023] uppercase">
             Top Stores
           </h2>
+          <br />
           <div className="flex-grow border-t border-[#e7dcca] ml-4"></div>
         </div>
 
@@ -594,7 +595,7 @@ const Home = () => {
               <p className="text-xl text-[#8c5f53] italic mb-6">
                 "I ordered a birthday cake for my daughter and it was absolutely
                 stunning! Not only did it look beautiful, but it tasted amazing
-                too. Sweet Indulgence has become our go-to bakery for all
+                too. Back House has become our go-to bakery for all
                 celebrations."
               </p>
               <div className="flex items-center justify-center">
