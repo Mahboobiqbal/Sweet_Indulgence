@@ -60,16 +60,6 @@ def get_user_orders():
             else:
                 orders = []
             
-            # Let's also check recent orders regardless of user to see if orders are being saved at all
-            cursor.execute("""
-                SELECT order_id, user_id, total_amount, date_created 
-                FROM orders 
-                ORDER BY date_created DESC 
-                LIMIT 5
-            """)
-            recent_orders = cursor.fetchall()
-            print(f"DEBUG: Recent orders in database: {recent_orders}")
-            
             # Convert to list of dictionaries
             orders_list = []
             for order in orders:
@@ -115,18 +105,246 @@ def get_user_orders():
             'message': f'Error getting orders: {str(e)}'
         }), 500
 
+@orders_bp.route('/supplier', methods=['GET'])
+@jwt_required()
+def get_supplier_orders():
+    """Get orders for the supplier's store - this should be used by suppliers"""
+    try:
+        user_id = get_jwt_identity()
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 10, type=int)
+        
+        print(f"DEBUG: Getting supplier orders for user: {user_id}, page: {page}, limit: {limit}")
+        
+        offset = (page - 1) * limit
+        
+        with get_cursor() as cursor:
+            # First, get the supplier's store
+            cursor.execute("""
+                SELECT store_id, name FROM stores 
+                WHERE owner_id = %s AND is_active = TRUE
+            """, (user_id,))
+            
+            store = cursor.fetchone()
+            print(f"DEBUG: Supplier store: {store}")
+            
+            if not store:
+                return jsonify({
+                    'success': True,
+                    'orders': [],
+                    'pagination': {
+                        'current_page': page,
+                        'total_pages': 1,
+                        'total_orders': 0,
+                        'limit': limit
+                    },
+                    'message': 'No store found for this supplier'
+                }), 200
+            
+            store_id = store['store_id']
+            
+            # Get total count of orders for this store
+            cursor.execute("""
+                SELECT COUNT(*) as total FROM orders 
+                WHERE store_id = %s
+            """, (store_id,))
+            
+            total_result = cursor.fetchone()
+            total_orders = total_result['total'] if total_result else 0
+            
+            print(f"DEBUG: Total orders for store {store_id}: {total_orders}")
+            
+            # Get orders for this store
+            if total_orders > 0:
+                cursor.execute("""
+                    SELECT 
+                        o.order_id,
+                        o.total_amount,
+                        o.status,
+                        o.payment_status,
+                        o.payment_method,
+                        o.shipping_address,
+                        o.shipping_city,
+                        o.shipping_phone,
+                        o.order_notes,
+                        o.date_created,
+                        o.date_updated,
+                        CONCAT(u.first_name, ' ', u.last_name) as customer_name,
+                        u.email as customer_email,
+                        s.name as store_name
+                    FROM orders o
+                    LEFT JOIN users u ON o.user_id = u.user_id
+                    LEFT JOIN stores s ON o.store_id = s.store_id
+                    WHERE o.store_id = %s
+                    ORDER BY o.date_created DESC
+                    LIMIT %s OFFSET %s
+                """, (store_id, limit, offset))
+                
+                orders = cursor.fetchall()
+                print(f"DEBUG: Raw supplier orders from DB: {orders}")
+            else:
+                orders = []
+            
+            # Convert to list of dictionaries
+            orders_list = []
+            for order in orders:
+                order_data = dict(order) if isinstance(order, dict) else dict(order)
+                
+                orders_list.append({
+                    'order_id': order_data['order_id'],
+                    'total_amount': float(order_data['total_amount']),
+                    'status': order_data['status'],
+                    'payment_status': order_data['payment_status'],
+                    'payment_method': order_data['payment_method'],
+                    'shipping_address': order_data['shipping_address'],
+                    'shipping_city': order_data['shipping_city'],
+                    'shipping_phone': order_data['shipping_phone'],
+                    'order_notes': order_data['order_notes'],
+                    'date_created': order_data['date_created'].isoformat() if order_data['date_created'] else None,
+                    'date_updated': order_data['date_updated'].isoformat() if order_data['date_updated'] else None,
+                    'customer_name': order_data['customer_name'] or 'Unknown Customer',
+                    'customer_email': order_data['customer_email'] or '',
+                    'store_name': order_data['store_name'] or store['name']
+                })
+            
+            total_pages = (total_orders + limit - 1) // limit if total_orders > 0 else 1
+            
+        print(f"DEBUG: Found {len(orders_list)} supplier orders")
+        print(f"DEBUG: Supplier orders list: {orders_list}")
+        
+        return jsonify({
+            'success': True,
+            'orders': orders_list,
+            'pagination': {
+                'current_page': page,
+                'total_pages': total_pages,
+                'total_orders': total_orders,
+                'limit': limit
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Error getting supplier orders: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error getting supplier orders: {str(e)}'
+        }), 500
+
 @orders_bp.route('/<order_id>', methods=['GET'])
 @jwt_required()
-def get_order(order_id):
-    """Get order by ID"""
-    user_id = get_jwt_identity()
-    
-    # Placeholder response until Order model is implemented
-    return jsonify({
-        'success': True,
-        'message': f'Order endpoint - Get order {order_id}',
-        'order': None
-    }), 200
+def get_order_details(order_id):
+    """Get detailed order information by ID"""
+    try:
+        user_id = get_jwt_identity()
+        
+        print(f"DEBUG: Getting order details for order_id: {order_id}, user_id: {user_id}")
+        
+        with get_cursor() as cursor:
+            # Get order details with items
+            cursor.execute("""
+                SELECT 
+                    o.order_id,
+                    o.total_amount,
+                    o.status,
+                    o.payment_status,
+                    o.payment_method,
+                    o.shipping_address,
+                    o.shipping_city,
+                    o.shipping_phone,
+                    o.order_notes,
+                    o.date_created,
+                    o.date_updated,
+                    o.loyalty_points_earned,
+                    o.loyalty_points_used,
+                    s.name as store_name,
+                    CONCAT(u.first_name, ' ', u.last_name) as customer_name,
+                    u.email as customer_email
+                FROM orders o
+                LEFT JOIN stores s ON o.store_id = s.store_id
+                LEFT JOIN users u ON o.user_id = u.user_id
+                WHERE o.order_id = %s AND (o.user_id = %s OR s.owner_id = %s)
+            """, (order_id, user_id, user_id))
+            
+            order = cursor.fetchone()
+            
+            print(f"DEBUG: Order query result: {order}")
+            
+            if not order:
+                return jsonify({
+                    'success': False,
+                    'message': 'Order not found or access denied'
+                }), 404
+            
+            # Convert to dict if needed
+            order_data = dict(order) if isinstance(order, dict) else dict(order)
+            
+            # Get order items
+            cursor.execute("""
+                SELECT 
+                    oi.quantity,
+                    oi.unit_price,
+                    oi.total_price,
+                    p.name as product_name,
+                    p.description
+                FROM order_items oi
+                JOIN products p ON oi.product_id = p.product_id
+                WHERE oi.order_id = %s
+            """, (order_id,))
+            
+            items = cursor.fetchall()
+            
+            print(f"DEBUG: Order items query result: {items}")
+            
+            # Convert items to list of dicts
+            items_list = []
+            for item in items:
+                item_data = dict(item) if isinstance(item, dict) else dict(item)
+                items_list.append({
+                    'quantity': item_data['quantity'],
+                    'unit_price': float(item_data['unit_price']),
+                    'total_price': float(item_data['total_price']),
+                    'product_name': item_data['product_name'],
+                    'description': item_data['description']
+                })
+            
+            # Build complete order object
+            order_details = {
+                'order_id': order_data['order_id'],
+                'total_amount': float(order_data['total_amount']),
+                'status': order_data['status'],
+                'payment_status': order_data['payment_status'],
+                'payment_method': order_data['payment_method'],
+                'shipping_address': order_data['shipping_address'],
+                'shipping_city': order_data['shipping_city'],
+                'shipping_phone': order_data['shipping_phone'],
+                'order_notes': order_data['order_notes'] or '',
+                'date_created': order_data['date_created'].isoformat() if order_data['date_created'] else None,
+                'date_updated': order_data['date_updated'].isoformat() if order_data['date_updated'] else None,
+                'store_name': order_data['store_name'] or 'Unknown Store',
+                'customer_name': order_data['customer_name'] or 'Unknown Customer',
+                'customer_email': order_data['customer_email'] or '',
+                'loyalty_points_earned': order_data.get('loyalty_points_earned', 0),
+                'loyalty_points_used': order_data.get('loyalty_points_used', 0),
+                'items': items_list
+            }
+            
+            print(f"DEBUG: Final order details: {order_details}")
+        
+        return jsonify({
+            'success': True,
+            'order': order_details
+        }), 200
+        
+    except Exception as e:
+        print(f"Error getting order details: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error getting order details: {str(e)}'
+        }), 500
 
 @orders_bp.route('', methods=['POST'])
 @orders_bp.route('/', methods=['POST'])
@@ -254,108 +472,6 @@ def create_order():
             'message': f'Error creating order: {str(e)}'
         }), 500
 
-@orders_bp.route('/<order_id>', methods=['GET'])
-@jwt_required()
-def get_order_details(order_id):
-    """Get detailed order information by ID"""
-    try:
-        user_id = get_jwt_identity()
-        
-        with get_cursor() as cursor:
-            # Get order details with items
-            cursor.execute("""
-                SELECT 
-                    o.order_id,
-                    o.total_amount,
-                    o.status,
-                    o.payment_status,
-                    o.payment_method,
-                    o.shipping_address,
-                    o.shipping_city,
-                    o.shipping_phone,
-                    o.order_notes,
-                    o.date_created,
-                    o.date_updated,
-                    s.name as store_name,
-                    CONCAT(u.first_name, ' ', u.last_name) as customer_name,
-                    u.email as customer_email
-                FROM orders o
-                JOIN stores s ON o.store_id = s.store_id
-                JOIN users u ON o.user_id = u.user_id
-                WHERE o.order_id = %s AND (o.user_id = %s OR s.owner_id = %s)
-            """, (order_id, user_id, user_id))
-            
-            order = cursor.fetchone()
-            
-            if not order:
-                return jsonify({
-                    'success': False,
-                    'message': 'Order not found or access denied'
-                }), 404
-            
-            # Convert to dict if needed
-            if not isinstance(order, dict):
-                columns = [desc[0] for desc in cursor.description]
-                order = dict(zip(columns, order))
-            
-            # Get order items
-            cursor.execute("""
-                SELECT 
-                    oi.quantity,
-                    oi.unit_price,
-                    oi.total_price,
-                    p.name as product_name,
-                    p.description
-                FROM order_items oi
-                JOIN products p ON oi.product_id = p.product_id
-                WHERE oi.order_id = %s
-            """, (order_id,))
-            
-            items = cursor.fetchall()
-            
-            # Convert items to list of dicts
-            items_list = []
-            for item in items:
-                if isinstance(item, dict):
-                    item_data = item
-                else:
-                    columns = [desc[0] for desc in cursor.description]
-                    item_data = dict(zip(columns, item))
-                items_list.append(item_data)
-            
-            # Build complete order object
-            order_details = {
-                'order_id': order['order_id'],
-                'total_amount': float(order['total_amount']),
-                'status': order['status'],
-                'payment_status': order['payment_status'],
-                'payment_method': order['payment_method'],
-                'shipping_address': order['shipping_address'],
-                'shipping_city': order['shipping_city'],
-                'shipping_phone': order['shipping_phone'],
-                'order_notes': order['order_notes'],
-                'date_created': order['date_created'].isoformat() if order['date_created'] else None,
-                'date_updated': order['date_updated'].isoformat() if order['date_updated'] else None,
-                'store_name': order['store_name'],
-                'customer_name': order['customer_name'],
-                'customer_email': order['customer_email'],
-                'items': items_list
-            }
-        
-        return jsonify({
-            'success': True,
-            'order': order_details
-        }), 200
-        
-    except Exception as e:
-        print(f"Error getting order details: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': f'Error getting order details: {str(e)}'
-        }), 500
-
 @orders_bp.route('/<order_id>/status', methods=['PUT'])
 @jwt_required()
 def update_order_status(order_id):
@@ -389,7 +505,7 @@ def update_order_status(order_id):
             # Update order status
             cursor.execute("""
                 UPDATE orders 
-                SET status = %s, date_updated = NOW()
+                SET status = %s, date_updated = CURRENT_TIMESTAMP
                 WHERE order_id = %s
             """, (new_status, order_id))
         
@@ -408,7 +524,7 @@ def update_order_status(order_id):
 @orders_bp.route('/store/<store_id>', methods=['GET'])
 @jwt_required()
 def get_store_orders(store_id):
-    """Get orders for a specific store (supplier only)"""
+    """Get orders for a specific store (supplier only) - Legacy endpoint"""
     try:
         user_id = get_jwt_identity()
         page = request.args.get('page', 1, type=int)
@@ -440,7 +556,7 @@ def get_store_orders(store_id):
             """, (store_id,))
             
             total_result = cursor.fetchone()
-            total_orders = total_result[0] if isinstance(total_result, tuple) else total_result['total']
+            total_orders = total_result['total'] if total_result else 0
             
             # Get store orders with customer info
             cursor.execute("""
@@ -470,11 +586,7 @@ def get_store_orders(store_id):
             # Convert to list of dictionaries
             orders_list = []
             for order in orders:
-                if isinstance(order, dict):
-                    order_data = order
-                else:
-                    columns = [desc[0] for desc in cursor.description]
-                    order_data = dict(zip(columns, order))
+                order_data = dict(order) if isinstance(order, dict) else dict(order)
                 
                 orders_list.append({
                     'order_id': order_data['order_id'],
@@ -544,43 +656,31 @@ def get_order_stats():
             
             store_id = store['store_id']
             
-            # Get order statistics - FIXED: using date_created instead of order_date
+            # Get order statistics
             stats_queries = {
                 'total_orders': """
-                    SELECT COUNT(DISTINCT o.order_id) as count FROM orders o
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    JOIN products p ON oi.product_id = p.product_id
-                    WHERE p.store_id = %s
+                    SELECT COUNT(*) as count FROM orders o
+                    WHERE o.store_id = %s
                 """,
                 'pending_orders': """
-                    SELECT COUNT(DISTINCT o.order_id) as count FROM orders o
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    JOIN products p ON oi.product_id = p.product_id
-                    WHERE p.store_id = %s AND o.status = 'pending'
+                    SELECT COUNT(*) as count FROM orders o
+                    WHERE o.store_id = %s AND o.status = 'pending'
                 """,
                 'processing_orders': """
-                    SELECT COUNT(DISTINCT o.order_id) as count FROM orders o
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    JOIN products p ON oi.product_id = p.product_id
-                    WHERE p.store_id = %s AND o.status = 'processing'
+                    SELECT COUNT(*) as count FROM orders o
+                    WHERE o.store_id = %s AND o.status = 'processing'
                 """,
                 'completed_orders': """
-                    SELECT COUNT(DISTINCT o.order_id) as count FROM orders o
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    JOIN products p ON oi.product_id = p.product_id
-                    WHERE p.store_id = %s AND o.status = 'delivered'
+                    SELECT COUNT(*) as count FROM orders o
+                    WHERE o.store_id = %s AND o.status = 'delivered'
                 """,
                 'cancelled_orders': """
-                    SELECT COUNT(DISTINCT o.order_id) as count FROM orders o
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    JOIN products p ON oi.product_id = p.product_id
-                    WHERE p.store_id = %s AND o.status = 'cancelled'
+                    SELECT COUNT(*) as count FROM orders o
+                    WHERE o.store_id = %s AND o.status = 'cancelled'
                 """,
                 'orders_today': """
-                    SELECT COUNT(DISTINCT o.order_id) as count FROM orders o
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    JOIN products p ON oi.product_id = p.product_id
-                    WHERE p.store_id = %s AND DATE(o.date_created) = CURRENT_DATE
+                    SELECT COUNT(*) as count FROM orders o
+                    WHERE o.store_id = %s AND DATE(o.date_created) = CURRENT_DATE
                 """
             }
             
@@ -592,13 +692,11 @@ def get_order_stats():
                 result = cursor.fetchone()
                 stats[stat_name] = result['count'] if result else 0
             
-            # Get total revenue - FIXED: using unit_price from order_items instead of price
+            # Get total revenue
             cursor.execute("""
-                SELECT COALESCE(SUM(oi.quantity * oi.unit_price), 0) as total_revenue
+                SELECT COALESCE(SUM(o.total_amount), 0) as total_revenue
                 FROM orders o
-                JOIN order_items oi ON o.order_id = oi.order_id
-                JOIN products p ON oi.product_id = p.product_id
-                WHERE p.store_id = %s AND o.status IN ('delivered', 'processing')
+                WHERE o.store_id = %s AND o.status IN ('delivered', 'processing')
             """, (store_id,))
             
             revenue_result = cursor.fetchone()

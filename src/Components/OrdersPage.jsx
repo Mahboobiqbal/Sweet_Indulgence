@@ -84,11 +84,15 @@ const OrdersPage = () => {
 
       console.log('DEBUG: Fetching orders for user role:', userRole);
 
-      let url = `http://localhost:5000/api/orders?page=${currentPage}&limit=${ordersPerPage}`;
+      let url;
       
-      // If user is a supplier and has a store, get their store orders
-      if (userRole === 'supplier' && userStore) {
-        url = `http://localhost:5000/api/orders/store/${userStore.store_id}?page=${currentPage}&limit=${ordersPerPage}`;
+      // Use different endpoints based on user role
+      if (userRole === 'supplier') {
+        // For suppliers, use the supplier orders endpoint
+        url = `http://localhost:5000/api/orders/supplier?page=${currentPage}&limit=${ordersPerPage}`;
+      } else {
+        // For customers, use the regular orders endpoint
+        url = `http://localhost:5000/api/orders?page=${currentPage}&limit=${ordersPerPage}`;
       }
 
       console.log('DEBUG: Fetching from URL:', url);
@@ -109,6 +113,11 @@ const OrdersPage = () => {
         setOrders(data.orders || []);
         if (data.pagination) {
           setTotalPages(data.pagination.total_pages || data.pagination.pages || 1);
+        }
+        
+        // If supplier and no orders found, show helpful message
+        if (userRole === 'supplier' && data.orders.length === 0) {
+          console.log('DEBUG: No orders found for supplier');
         }
       } else {
         const errorData = await response.json();
@@ -164,8 +173,11 @@ const OrdersPage = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('DEBUG: Order details:', data);
         setSelectedOrder(data.order);
       } else {
+        const errorData = await response.json();
+        console.error('Order details error:', errorData);
         toast.error('Failed to fetch order details');
       }
     } catch (error) {
@@ -233,7 +245,7 @@ const OrdersPage = () => {
   }
 
   // Show message for suppliers without store
-  if (userRole === 'supplier' && !userStore) {
+  if (userRole === 'supplier' && userStore === null) {
     return (
       <div className="min-h-screen bg-[#fff9f5] py-8 px-4">
         <ToastContainer />
@@ -281,7 +293,7 @@ const OrdersPage = () => {
               <h3 className="text-xl font-semibold text-[#5e3023] mb-2">No orders found</h3>
               <p className="text-[#8c5f53]">
                 {userRole === 'supplier' 
-                  ? "You haven't received any orders yet. Customers will see your products and place orders." 
+                  ? "You haven't received any orders yet. Once customers place orders for your products, they will appear here." 
                   : "You haven't placed any orders yet. Start shopping to see your orders here."}
               </p>
               {userRole !== 'supplier' && (
@@ -303,6 +315,9 @@ const OrdersPage = () => {
                       {userRole === 'supplier' && (
                         <th className="px-4 py-3 font-semibold text-[#5e3023]">Customer</th>
                       )}
+                      {userRole === 'customer' && (
+                        <th className="px-4 py-3 font-semibold text-[#5e3023]">Store</th>
+                      )}
                       <th className="px-4 py-3 font-semibold text-[#5e3023]">Date</th>
                       <th className="px-4 py-3 font-semibold text-[#5e3023]">Total</th>
                       <th className="px-4 py-3 font-semibold text-[#5e3023]">Status</th>
@@ -318,7 +333,17 @@ const OrdersPage = () => {
                         </td>
                         {userRole === 'supplier' && (
                           <td className="px-4 py-3 text-[#5e3023]">
-                            {order.customer_name || 'Customer'}
+                            <div>
+                              <div className="font-medium">{order.customer_name || 'Unknown Customer'}</div>
+                              {order.customer_email && (
+                                <div className="text-xs text-[#8c5f53]">{order.customer_email}</div>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {userRole === 'customer' && (
+                          <td className="px-4 py-3 text-[#5e3023]">
+                            {order.store_name || 'Unknown Store'}
                           </td>
                         )}
                         <td className="px-4 py-3 text-[#8c5f53]">
@@ -406,7 +431,7 @@ const OrdersPage = () => {
         </div>
       </div>
 
-      {/* Order Details Modal - Keep your existing modal code here */}
+      {/* Order Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-[#e7dcca]">
@@ -440,6 +465,12 @@ const OrdersPage = () => {
                   </p>
                   {selectedOrder.payment_method && (
                     <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>
+                  )}
+                  {userRole === 'supplier' && (
+                    <p><strong>Customer:</strong> {selectedOrder.customer_name}</p>
+                  )}
+                  {userRole === 'customer' && (
+                    <p><strong>Store:</strong> {selectedOrder.store_name}</p>
                   )}
                 </div>
               </div>
@@ -477,7 +508,14 @@ const OrdersPage = () => {
                     <tbody>
                       {selectedOrder.items.map((item, index) => (
                         <tr key={index}>
-                          <td className="border border-[#e7dcca] px-3 py-2">{item.product_name || item.name}</td>
+                          <td className="border border-[#e7dcca] px-3 py-2">
+                            <div>
+                              <div className="font-medium">{item.product_name || item.name}</div>
+                              {item.description && (
+                                <div className="text-xs text-[#8c5f53] mt-1">{item.description}</div>
+                              )}
+                            </div>
+                          </td>
                           <td className="border border-[#e7dcca] px-3 py-2 text-center">{item.quantity}</td>
                           <td className="border border-[#e7dcca] px-3 py-2 text-right">
                             {formatCurrency(item.unit_price || item.price)}
