@@ -325,16 +325,16 @@ const PostLoginNavbar = () => {
 
         {/* Mobile Navigation Menu */}
         {isMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 bg-[#5e3023] rounded-md shadow-md">
+          <div className="md:hidden mt-4 pb-4 p-7 bg-[#5e3023] rounded-md shadow-md">
             <Link
               to="/home"
-              className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+              className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
             >
               Home
             </Link>
             <Link
               to="/products"
-              className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+              className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
             >
               Products
             </Link>
@@ -344,7 +344,7 @@ const PostLoginNavbar = () => {
               <>
                 <Link
                   to="/wishlist"
-                  className=" py-2 px-4 text-[#5e3023] hover:text-[#d3756b] flex items-center gap-2 font-medium"
+                  className=" py-2 px-4 text-white hover:text-[#d3756b] flex items-center gap-2 font-medium"
                 >
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -353,7 +353,7 @@ const PostLoginNavbar = () => {
                 </Link>
                 <Link
                   to="/cart"
-                  className=" py-2 px-4 text-[#5e3023] hover:text-[#d3756b] flex items-center gap-2 font-medium"
+                  className=" py-2 px-4 text-white hover:text-[#d3756b] flex items-center gap-2 font-medium"
                 >
                   <svg
                     className="w-5 h-5 stroke-current"
@@ -372,25 +372,25 @@ const PostLoginNavbar = () => {
                 </Link>
                 <Link
                   to="/profile"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Profile
                 </Link>
                 <Link
                   to="/orders"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   My Orders
                 </Link>
                 <Link
                   to="/about"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   About Us
                 </Link>
                 <Link
                   to="/contact"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Contact Us
                 </Link>
@@ -411,43 +411,43 @@ const PostLoginNavbar = () => {
               <>
                 <Link
                   to="/supplier-dashboard"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Dashboard
                 </Link>
                 <Link
                   to="/manage-products"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   My Products
                 </Link>
                 <Link
                   to="/manage-orders"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Orders
                 </Link>
                 <Link
                   to="/store-settings"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Store Settings
                 </Link>
                 <Link
                   to="/profile"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Profile
                 </Link>
                 <Link
                   to="/about"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   About Us
                 </Link>
                 <Link
                   to="/contact"
-                  className="block py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Contact Us
                 </Link>
@@ -456,7 +456,7 @@ const PostLoginNavbar = () => {
                     handleLogout();
                     setIsMenuOpen(false);
                   }}
-                  className="block w-full text-left py-2 px-4 text-[#5e3023] hover:text-[#d3756b] font-medium"
+                  className="block w-full bg-red-500 text-left py-2 px-4 text-white hover:text-[#d3756b] font-medium"
                 >
                   Logout
                 </button>

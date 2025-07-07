@@ -143,10 +143,10 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fff9f5]">
+    <div className="min-h-screen bg-[#fff9f5] ">
       {/* Hero section - Fixed responsive video */}
       {showVideo ? (
-        <div className="relative mb-8 md:mb-12 shadow-lg overflow-hidden">
+        <div className="relative mb-8 md:mb-12 shadow-lg overflow-hidden ">
           <video
             ref={videoRef}
             className="w-full h-[50vh] md:h-auto object-cover"
@@ -208,7 +208,7 @@ const Home = () => {
           </button>
 
           {/* Overlay Content - Responsive */}
-          <div className="absolute inset-0 flex items-center justify-center px-4">
+          <div className="absolute inset-0 flex items-center justify-center px-4 mt-14">
             <div className="text-center bg-black/40 p-4 md:p-8 rounded-lg backdrop-blur-sm max-w-3xl w-full">
               <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 md:mb-4">
                 Welcome to Back House
