@@ -327,13 +327,13 @@ const AboutPage = () => {
               {
                 name: "Imran Khalid",
                 quote:
-                  "I've ordered multiple times from Sweet Indulgence and they never disappoint. Their attention to detail is impeccable.",
+                  "I've ordered multiple times from Bake House and they never disappoint. Their attention to detail is impeccable.",
                 location: "Lahore",
               },
               {
                 name: "Saira Malik",
                 quote:
-                  "My wedding cake was the talk of the event! Sweet Indulgence truly made our special day even more memorable.",
+                  "My wedding cake was the talk of the event! Bake House truly made our special day even more memorable.",
                 location: "Karachi",
               },
             ].map((testimonial, index) => (

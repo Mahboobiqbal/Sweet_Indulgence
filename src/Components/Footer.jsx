@@ -67,11 +67,11 @@ const Footer = () => {
                 href="mailto:baketowninc@gmail.com"
                 className="hover:text-[#d3756b] transition-colors"
               >
-                baketowninc@gmail.com
+                info@bakehouse.com
               </a>
             </li>
             <li className="flex items-center">
-              <FaWhatsapp className="mr-2" /> +92 307 4443780
+              <FaWhatsapp className="mr-2" /> +92 345 123456
             </li>
             <li>Mingora, Swat, Pakistan</li>
           </ul>
@@ -112,7 +112,7 @@ const Footer = () => {
         {/* Copyright */}
         <div className="col-span-1 md:col-span-4 text-center mt-8 pt-8 border-t border-[#8c5f53]">
           <p className="text-[#8c5f53]">
-            © {new Date().getFullYear()} Bake House. All Rights Reserved.
+            © {new Date().getFullYear()} © 2025 Bake House. All Rights Reserved.
           </p>
         </div>
       </div>

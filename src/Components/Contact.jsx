@@ -146,7 +146,7 @@ const ContactPage = () => {
                       Our Location
                     </h4>
                     <p className="text-[#8c5f53] mt-1">
-                      Main Street, Swat, Pakistan
+                      Mingora, Swat, Pakistan
                     </p>
                     <p className="text-[#8c5f53]">
                       Also in Islamabad, Lahore & Karachi
@@ -200,7 +200,7 @@ const ContactPage = () => {
                       Email Address
                     </h4>
                     <p className="text-[#8c5f53] mt-1">
-                      info@sweetindulgence.com
+                      info@bakehouse.com
                     </p>
                     <p className="text-[#8c5f53]">We respond within 24 hours</p>
                   </div>
