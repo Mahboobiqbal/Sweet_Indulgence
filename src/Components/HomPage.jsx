@@ -109,32 +109,20 @@ const HomePage = () => {
   useEffect(() => {
     const fetchStores = async () => {
       try {
-        // This would be a new endpoint you might want to add
-        // For now, we'll extract unique stores from products
-        if (products.length > 0) {
-          const uniqueStores = products.reduce((acc, product) => {
-            if (product.store_id && product.store_name) {
-              const existing = acc.find(
-                (store) => store.store_id === product.store_id
-              );
-              if (!existing) {
-                acc.push({
-                  store_id: product.store_id,
-                  name: product.store_name,
-                });
-              }
-            }
-            return acc;
-          }, []);
-          setStores(uniqueStores);
+        const response = await fetch("http://localhost:5000/api/stores/top-stores?limit=100"); // Get more stores
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setStores(data.stores || []);
+          }
         }
       } catch (err) {
-        console.error("Error processing stores:", err);
+        console.error("Error fetching stores:", err);
       }
     };
 
     fetchStores();
-  }, [products]);
+  }, []); // Remove dependency on products
 
   // Handle filter changes
   const handleFilterChange = (e) => {
@@ -319,27 +307,28 @@ const HomePage = () => {
                   </select>
                 </div>
 
-                {/* Store Filter */}
-                {stores.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#5e3023] mb-3">
-                      Bakeries
-                    </h3>
-                    <select
-                      name="store_id"
-                      value={filters.store_id}
-                      onChange={handleFilterChange}
-                      className="w-full px-3 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
-                    >
-                      <option value="">All Bakeries</option>
-                      {stores.map((store) => (
-                        <option key={store.store_id} value={store.store_id}>
-                          {store.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+{/* Store Filter */}
+{stores.length > 0 && (
+  <div>
+    <h3 className="text-lg font-semibold text-[#5e3023] mb-3">
+      Bakeries ({stores.length})
+    </h3>
+    <select
+      name="store_id"
+      value={filters.store_id}
+      onChange={handleFilterChange}
+      className="w-full px-3 py-2 rounded-lg border border-[#e7dcca] focus:outline-none focus:ring-2 focus:ring-[#d3756b]"
+    >
+      <option value="">All Bakeries</option>
+      {stores.map((store) => (
+        <option key={store.store_id} value={store.store_id}>
+          {store.name} {store.city && `(${store.city})`} 
+          {/* {store.product_count && ` - ${store.product_count} products`} */}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
 
                 {/* Price Range */}
                 <div>

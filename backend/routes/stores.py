@@ -562,6 +562,8 @@ def get_top_stores():
     """Get top stores by product count"""
     try:
         limit = request.args.get('limit', 5, type=int)
+        # Add a reasonable maximum limit
+        limit = min(limit, 500)  # Prevent excessive queries
         
         with get_cursor() as cursor:
             # Get stores with their product count, ordered by product count desc
@@ -579,7 +581,6 @@ def get_top_stores():
                 ORDER BY product_count DESC, s.date_created DESC
                 LIMIT %s
             """
-            
             cursor.execute(sql, (limit,))
             stores = cursor.fetchall()
             
@@ -605,13 +606,15 @@ def get_top_stores():
                 'success': True,
                 'stores': stores_list,
                 'total': len(stores_list)
-            })
+            }), 200
             
     except Exception as e:
         print(f"Error fetching top stores: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'message': f'Error fetching top stores: {str(e)}'
+            'message': f'Error fetching stores: {str(e)}'
         }), 500
 
 @stores_bp.route('/test-api/<store_id>', methods=['GET'])
