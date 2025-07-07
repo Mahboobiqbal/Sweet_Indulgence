@@ -70,6 +70,7 @@ const AppRoutes = () => {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         
+        
         {/* Public Store Details Route - MUST come before protected routes */}
         <Route path="/store/:storeId" element={<StoreDetails />} />
         

@@ -105,12 +105,12 @@ const PostLoginNavbar = () => {
             >
               Home
             </Link>
-            <Link
+            {/* <Link
               to="/products"
               className="text-[#5e3023] hover:text-[#d3756b] transition-colors font-medium"
             >
               Products
-            </Link>
+            </Link> */}
 
             {/* Customer-specific navigation items */}
             {isCustomer && (
