@@ -69,6 +69,10 @@ const PostLoginNavbar = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/", { replace: true });
@@ -329,12 +333,14 @@ const PostLoginNavbar = () => {
             <Link
               to="/home"
               className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+              onClick={closeMenu}
             >
               Home
             </Link>
             <Link
               to="/products"
               className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+              onClick={closeMenu}
             >
               Products
             </Link>
@@ -345,6 +351,7 @@ const PostLoginNavbar = () => {
                 <Link
                   to="/wishlist"
                   className=" py-2 px-4 text-white hover:text-[#d3756b] flex items-center gap-2 font-medium"
+                  onClick={closeMenu}
                 >
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -354,6 +361,7 @@ const PostLoginNavbar = () => {
                 <Link
                   to="/cart"
                   className=" py-2 px-4 text-white hover:text-[#d3756b] flex items-center gap-2 font-medium"
+                  onClick={closeMenu}
                 >
                   <svg
                     className="w-5 h-5 stroke-current"
@@ -373,24 +381,28 @@ const PostLoginNavbar = () => {
                 <Link
                   to="/profile"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   Profile
                 </Link>
                 <Link
                   to="/orders"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   My Orders
                 </Link>
                 <Link
                   to="/about"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   About Us
                 </Link>
                 <Link
                   to="/contact"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   Contact Us
                 </Link>
@@ -412,42 +424,49 @@ const PostLoginNavbar = () => {
                 <Link
                   to="/supplier-dashboard"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   Dashboard
                 </Link>
                 <Link
                   to="/manage-products"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   My Products
                 </Link>
                 <Link
                   to="/manage-orders"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   Orders
                 </Link>
                 <Link
                   to="/store-settings"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   Store Settings
                 </Link>
                 <Link
                   to="/profile"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   Profile
                 </Link>
                 <Link
                   to="/about"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   About Us
                 </Link>
                 <Link
                   to="/contact"
                   className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
                 >
                   Contact Us
                 </Link>
