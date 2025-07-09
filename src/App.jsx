@@ -28,6 +28,8 @@ import ProductDetails from "./Components/ProductDetsils";
 import Payment from "./Components/Payment";
 import Wishlist from "./Components/WishList";
 import Cart from "./Components/Cart";
+import ManageProducts from "./Components/ManageProducts";
+import EditProduct from "./Components/EditProduct";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -69,7 +71,6 @@ const AppRoutes = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        
         
         {/* Public Store Details Route - MUST come before protected routes */}
         <Route path="/store/:storeId" element={<StoreDetails />} />
@@ -163,7 +164,7 @@ const AppRoutes = () => {
           path="/manage-products"
           element={
             <ProtectedRoute allowedRoles={["supplier"]}>
-              <ProductsPage />
+              <ManageProducts />
             </ProtectedRoute>
           }
         />
@@ -188,6 +189,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={["supplier"]}>
               <StoreCreationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/edit-product/:productId"
+          element={
+            <ProtectedRoute allowedRoles={["supplier"]}>
+              <EditProduct />
             </ProtectedRoute>
           }
         />

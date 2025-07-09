@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.auth import role_required
-from database.db import get_cursor
+from database.db import get_cursor, get_db  # Use your existing database functions
+from datetime import datetime, date
+import uuid
 
 orders_bp = Blueprint('orders', __name__)
 
@@ -631,87 +633,74 @@ def get_store_orders(store_id):
 @orders_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_order_stats():
-    """Get order statistics for the current user's store"""
+    """Get order statistics for the authenticated store"""
     try:
-        user_id = get_jwt_identity()
+        current_user_id = get_jwt_identity()
         
         with get_cursor() as cursor:
-            # Get the user's store first
-            cursor.execute("SELECT store_id FROM stores WHERE owner_id = %s AND is_active = true", (user_id,))
-            store = cursor.fetchone()
+            # Get the store_id for this user
+            store_query = "SELECT store_id FROM stores WHERE owner_id = %s"
+            cursor.execute(store_query, (current_user_id,))
+            store_result = cursor.fetchone()
             
-            if not store:
+            if not store_result:
                 return jsonify({
-                    'success': True,
-                    'stats': {
-                        'total_orders': 0,
-                        'pending_orders': 0,
-                        'processing_orders': 0,
-                        'completed_orders': 0,
-                        'cancelled_orders': 0,
-                        'total_revenue': 0,
-                        'orders_today': 0
-                    }
-                }), 200
+                    'success': False,
+                    'message': 'Store not found for this user'
+                }), 404
             
-            store_id = store['store_id']
+            store_id = store_result['store_id']
             
-            # Get order statistics
-            stats_queries = {
-                'total_orders': """
-                    SELECT COUNT(*) as count FROM orders o
-                    WHERE o.store_id = %s
-                """,
-                'pending_orders': """
-                    SELECT COUNT(*) as count FROM orders o
-                    WHERE o.store_id = %s AND o.status = 'pending'
-                """,
-                'processing_orders': """
-                    SELECT COUNT(*) as count FROM orders o
-                    WHERE o.store_id = %s AND o.status = 'processing'
-                """,
-                'completed_orders': """
-                    SELECT COUNT(*) as count FROM orders o
-                    WHERE o.store_id = %s AND o.status = 'delivered'
-                """,
-                'cancelled_orders': """
-                    SELECT COUNT(*) as count FROM orders o
-                    WHERE o.store_id = %s AND o.status = 'cancelled'
-                """,
-                'orders_today': """
-                    SELECT COUNT(*) as count FROM orders o
-                    WHERE o.store_id = %s AND DATE(o.date_created) = CURRENT_DATE
-                """
+            # First, let's check what enum values exist for order_status
+            cursor.execute("""
+                SELECT unnest(enum_range(NULL::order_status)) as status_value
+            """)
+            enum_values = cursor.fetchall()
+            print(f"DEBUG: Available order_status enum values: {[row['status_value'] for row in enum_values]}")
+            
+            # Get order statistics using the correct enum values
+            # Common enum values are usually: 'pending', 'processing', 'shipped', 'delivered', 'cancelled'
+            stats_query = """
+                SELECT 
+                    COUNT(DISTINCT o.order_id) as total_orders,
+                    COUNT(DISTINCT CASE WHEN o.status = 'pending' THEN o.order_id END) as pending_orders,
+                    COUNT(DISTINCT CASE WHEN o.status = 'processing' THEN o.order_id END) as processing_orders,
+                    COUNT(DISTINCT CASE WHEN o.status = 'shipped' THEN o.order_id END) as shipped_orders,
+                    COUNT(DISTINCT CASE WHEN o.status = 'delivered' THEN o.order_id END) as delivered_orders,
+                    COUNT(DISTINCT CASE WHEN o.status = 'cancelled' THEN o.order_id END) as cancelled_orders,
+                    COALESCE(SUM(CASE WHEN o.status IN ('delivered', 'shipped') THEN oi.total_price END), 0) as total_revenue,
+                    COUNT(DISTINCT CASE WHEN DATE(o.date_created) = CURRENT_DATE THEN o.order_id END) as orders_today
+                FROM orders o
+                JOIN order_items oi ON o.order_id = oi.order_id
+                JOIN products p ON oi.product_id = p.product_id
+                WHERE p.store_id = %s
+            """
+            
+            cursor.execute(stats_query, (store_id,))
+            stats = cursor.fetchone()
+            
+            # Convert to the format expected by the frontend
+            formatted_stats = {
+                'total_orders': stats['total_orders'] or 0,
+                'pending_orders': stats['pending_orders'] or 0,
+                'processing_orders': stats['processing_orders'] or 0,
+                'completed_orders': (stats['delivered_orders'] or 0) + (stats['shipped_orders'] or 0),  # Combined shipped + delivered
+                'cancelled_orders': stats['cancelled_orders'] or 0,
+                'total_revenue': float(stats['total_revenue'] or 0),
+                'orders_today': stats['orders_today'] or 0
             }
             
-            stats = {}
-            
-            # Execute each query
-            for stat_name, query in stats_queries.items():
-                cursor.execute(query, (store_id,))
-                result = cursor.fetchone()
-                stats[stat_name] = result['count'] if result else 0
-            
-            # Get total revenue
-            cursor.execute("""
-                SELECT COALESCE(SUM(o.total_amount), 0) as total_revenue
-                FROM orders o
-                WHERE o.store_id = %s AND o.status IN ('delivered', 'processing')
-            """, (store_id,))
-            
-            revenue_result = cursor.fetchone()
-            stats['total_revenue'] = float(revenue_result['total_revenue']) if revenue_result['total_revenue'] else 0
-        
-        return jsonify({
-            'success': True,
-            'stats': stats
-        }), 200
-        
+            return jsonify({
+                'success': True,
+                'stats': formatted_stats
+            })
+    
     except Exception as e:
         print(f"Error fetching order stats: {e}")
         return jsonify({
             'success': False,
-            'message': f'Error fetching order stats: {str(e)}'
+            'message': 'Error fetching order stats',
+            'error': str(e)
         }), 500
 
 @orders_bp.route('/test-db', methods=['POST'])
