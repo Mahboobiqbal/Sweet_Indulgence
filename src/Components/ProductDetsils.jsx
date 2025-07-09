@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { cartService } from "../services/cartService";
 import { toast } from 'react-toastify';
+import OwnStoreModal from './OwnStoreModal';
 
 const ProductDetails = () => {
   const { productId } = useParams();
@@ -10,6 +11,8 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [isOwnProduct, setIsOwnProduct] = useState(false);
+  const [showOwnStoreModal, setShowOwnStoreModal] = useState(false);
 
   // Helper function to get product image URL
   const getProductImageUrl = (product) => {
@@ -60,6 +63,35 @@ const ProductDetails = () => {
       });
   }, [productId]);
 
+  useEffect(() => {
+    const checkOwnership = async () => {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      if (currentUser.role === 'supplier' && product) {
+        try {
+          const token = localStorage.getItem('token');
+          const storeCheckResponse = await fetch('http://localhost:5000/api/stores/check', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (storeCheckResponse.ok) {
+            const storeData = await storeCheckResponse.json();
+            if (storeData.success && storeData.store && storeData.store.store_id === product.store_id) {
+              setIsOwnProduct(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking ownership:', error);
+        }
+      }
+    };
+    
+    if (product) {
+      checkOwnership();
+    }
+  }, [product]);
+
   const handleAddToCart = async () => {
     if (!product) return;
     
@@ -69,6 +101,25 @@ const ProductDetails = () => {
         toast.error('Please login to add items to cart');
         navigate('/login');
         return;
+      }
+      
+      // Check if user is a supplier trying to add their own product
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      if (currentUser.role === 'supplier') {
+        // Check if this product belongs to the current user's store
+        const storeCheckResponse = await fetch('http://localhost:5000/api/stores/check', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (storeCheckResponse.ok) {
+          const storeData = await storeCheckResponse.json();
+          if (storeData.success && storeData.store && storeData.store.store_id === product.store_id) {
+            toast.error('You cannot add your own products to cart. This is your store!');
+            return;
+          }
+        }
       }
       
       if (product.stock_quantity <= 0) {
@@ -146,8 +197,34 @@ const ProductDetails = () => {
     }
   };
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (!product) return;
+    
+    // Check if user is a supplier trying to buy their own product
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (currentUser.role === 'supplier') {
+      try {
+        const token = localStorage.getItem('token');
+        const storeCheckResponse = await fetch('http://localhost:5000/api/stores/check', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (storeCheckResponse.ok) {
+          const storeData = await storeCheckResponse.json();
+          if (storeData.success && storeData.store && storeData.store.store_id === product.store_id) {
+            // Show the modal instead of proceeding
+            setShowOwnStoreModal(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking store ownership:', error);
+        toast.error('Error checking store information');
+        return;
+      }
+    }
     
     if (product.stock_quantity <= 0) {
       toast.error('This product is currently out of stock');
@@ -155,7 +232,6 @@ const ProductDetails = () => {
     }
     
     const order = { ...product, quantity, product_id: product.product_id };
-    console.log("Navigating to Payment with:", order);
     navigate("/payment", { state: { order } });
   };
 
@@ -335,41 +411,72 @@ const ProductDetails = () => {
 
               {/* Action Buttons */}
               <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    onClick={handleAddToCart}
-                    className="flex-1 bg-[#d3756b] text-white py-3 rounded-lg hover:bg-[#c25d52] transition-colors font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    disabled={product.stock_quantity <= 0}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                {isOwnProduct ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <svg className="w-8 h-8 text-blue-500 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                     </svg>
-                    Add to Cart
-                  </button>
-                  <button
-                    onClick={handleProceedToPayment}
-                    className="flex-1 bg-[#5e3023] text-white py-3 rounded-lg hover:bg-[#4a241b] transition-colors font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={product.stock_quantity <= 0}
-                  >
-                    Buy Now
-                  </button>
-                </div>
-                
-                {/* Wishlist Button */}
-                <button
-                  onClick={handleAddToWishlist}
-                  className="w-full bg-white text-[#d3756b] border-2 border-[#d3756b] py-3 rounded-lg hover:bg-[#d3756b] hover:text-white transition-colors font-medium text-sm sm:text-base flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                  </svg>
-                  Add to Wishlist
-                </button>
+                    <h3 className="text-lg font-semibold text-blue-700 mb-1">This is Your Product</h3>
+                    <p className="text-blue-600 text-sm">You cannot purchase products from your own store.</p>
+                    <Link
+                      to="/manage-products"
+                      className="inline-block mt-3 text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Manage Your Products &rarr;
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <button
+                        onClick={handleAddToCart}
+                        className="flex-1 bg-[#d3756b] text-white py-3 rounded-lg hover:bg-[#c25d52] transition-colors font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        disabled={product.stock_quantity <= 0}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Add to Cart
+                      </button>
+                      <button
+                        onClick={handleProceedToPayment}
+                        className="flex-1 bg-[#5e3023] text-white py-3 rounded-lg hover:bg-[#4a241b] transition-colors font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={product.stock_quantity <= 0}
+                      >
+                        Buy Now
+                      </button>
+                    </div>
+                    
+                    <button
+                      onClick={handleAddToWishlist}
+                      className="w-full bg-white text-[#d3756b] border-2 border-[#d3756b] py-3 rounded-lg hover:bg-[#d3756b] hover:text-white transition-colors font-medium text-sm sm:text-base flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                      </svg>
+                      Add to Wishlist
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Own Store Modal */}
+      <OwnStoreModal
+        isOpen={showOwnStoreModal}
+        onClose={() => setShowOwnStoreModal(false)}
+        onManageProducts={() => {
+          setShowOwnStoreModal(false);
+          navigate('/manage-products');
+        }}
+        onBrowseProducts={() => {
+          setShowOwnStoreModal(false);
+          navigate('/products');
+        }}
+      />
     </div>
   );
 };

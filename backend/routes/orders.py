@@ -369,8 +369,82 @@ def create_order():
                     'message': f'{field} is required'
                 }), 400
         
+        with get_cursor() as cursor:
+            # Check if user exists (but don't restrict by role yet)
+            cursor.execute("SELECT role FROM users WHERE user_id = %s", (user_id,))
+            user_result = cursor.fetchone()
+            
+            if not user_result:
+                return jsonify({
+                    'success': False,
+                    'message': 'User not found'
+                }), 404
+            
+            user_role = user_result['role']
+            print(f"DEBUG: User role: {user_role}")
+            
+            # Get the store_id from the first product
+            first_item = data['items'][0]
+            print(f"DEBUG: Looking up store for product: {first_item['product_id']}")
+            
+            cursor.execute("""
+                SELECT p.store_id, s.owner_id, s.name as store_name 
+                FROM products p 
+                JOIN stores s ON p.store_id = s.store_id 
+                WHERE p.product_id = %s
+            """, (first_item['product_id'],))
+            store_result = cursor.fetchone()
+            
+            if not store_result:
+                return jsonify({
+                    'success': False,
+                    'message': 'Product not found'
+                }), 404
+            
+            store_id = store_result['store_id']
+            store_owner_id = store_result['owner_id']
+            store_name = store_result['store_name']
+            
+            print(f"DEBUG: Store ID: {store_id}, Owner ID: {store_owner_id}")
+            print(f"DEBUG: Current user ID: {user_id}")
+            
+            # NOW check if user is trying to order from their own store
+            if store_owner_id == user_id:
+                return jsonify({
+                    'success': False,
+                    'message': f'You cannot order products from your own store "{store_name}". Please order from other stores.'
+                }), 403
+            
+            # Verify all products belong to the same store AND user doesn't own any of them
+            for item in data['items']:
+                cursor.execute("""
+                    SELECT p.store_id, s.owner_id 
+                    FROM products p 
+                    JOIN stores s ON p.store_id = s.store_id 
+                    WHERE p.product_id = %s
+                """, (item['product_id'],))
+                product_store = cursor.fetchone()
+                
+                if not product_store:
+                    return jsonify({
+                        'success': False,
+                        'message': f'Product {item["product_id"]} not found'
+                    }), 404
+                
+                if product_store['store_id'] != store_id:
+                    return jsonify({
+                        'success': False,
+                        'message': 'All products must be from the same store'
+                    }), 400
+                
+                # Double-check ownership for each product
+                if product_store['owner_id'] == user_id:
+                    return jsonify({
+                        'success': False,
+                        'message': f'You cannot order products from your own store "{store_name}"'
+                    }), 403
+        
         # Generate order ID
-        import uuid
         order_id = str(uuid.uuid4())
         print(f"DEBUG: Generated order ID: {order_id}")
         
@@ -380,25 +454,9 @@ def create_order():
         payment_method = data.get('payment_method', 'Credit Card')
         order_notes = data.get('order_notes', '')
         
-        with get_cursor() as cursor:
-            print(f"DEBUG: Cursor obtained successfully")
-            
-            # Get the store_id from the first product
-            first_item = data['items'][0]
-            print(f"DEBUG: Looking up store for product: {first_item['product_id']}")
-            
-            cursor.execute("SELECT store_id FROM products WHERE product_id = %s", (first_item['product_id'],))
-            store_result = cursor.fetchone()
-            print(f"DEBUG: Store lookup result: {store_result}")
-            
-            if not store_result:
-                return jsonify({
-                    'success': False,
-                    'message': 'Product not found'
-                }), 404
-            
-            store_id = store_result['store_id']
-            print(f"DEBUG: Using store_id: {store_id}")
+        db = get_db()
+        with db.cursor() as cursor:
+            print(f"DEBUG: Creating order for store: {store_id}")
             
             # Create the order
             cursor.execute("""
@@ -450,6 +508,7 @@ def create_order():
                         'message': f'Insufficient stock for product {item["product_id"]}'
                     }), 400
         
+        db.commit()
         print(f"DEBUG: Order creation completed successfully: {order_id}")
         
         return jsonify({
@@ -466,6 +525,8 @@ def create_order():
         }), 201
         
     except Exception as e:
+        db = get_db()
+        db.rollback()
         print(f"ERROR: Order creation failed: {e}")
         import traceback
         traceback.print_exc()

@@ -57,7 +57,7 @@ const Payment = () => {
       
       // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Create order payload
       const orderPayload = {
         // If it's from cart
@@ -82,10 +82,10 @@ const Payment = () => {
         }),
         // Customer details
         shipping_address: formData.address || "123 Default Street",
-        shipping_city: "Default City",
-        shipping_phone: "0000000000",
-        payment_method: "Credit Card",
-        customer_name: formData.name || "Test Customer",
+        shipping_city: formData.city || "Default City", 
+        shipping_phone: formData.phone || "0000000000",
+        payment_method: formData.paymentMethod || "Credit Card",
+        customer_name: `${formData.firstName || 'Test'} ${formData.lastName || 'Customer'}`,
         customer_email: formData.email || "test@example.com",
         order_notes: "Test order - payment simulation"
       };
@@ -132,15 +132,147 @@ const Payment = () => {
         }, 1500);
         
       } else {
-        throw new Error(data.message || 'Failed to create order');
+        // Handle specific error for own store (403 status)
+        if (response.status === 403 && data.message) {
+          showOwnStorePopup(data.message);
+          return; // Don't throw error, just show popup and return
+        } else {
+          throw new Error(data.message || 'Failed to create order');
+        }
       }
-      
+
     } catch (error) {
       console.error("Payment/Order error:", error);
       toast.error("❌ Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Alternative enhanced popup version for the payment page
+  const showOwnStorePopup = (message) => {
+    // Create custom modal
+    const modalHtml = `
+      <div id="ownStoreModal" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: system-ui, -apple-system, sans-serif;
+      ">
+        <div style="
+          background: white;
+          border-radius: 16px;
+          padding: 24px;
+          max-width: 400px;
+          width: 90%;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        ">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="
+              width: 64px;
+              height: 64px;
+              background: linear-gradient(135deg, #ef4444, #dc2626);
+              border-radius: 50%;
+              margin: 0 auto 16px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-size: 32px;
+            ">🚫</div>
+            <h2 style="margin: 0; color: #5e3023; font-size: 24px; font-weight: bold;">Cannot Order!</h2>
+            <p style="margin: 8px 0 0; color: #dc2626;">This is your own store</p>
+          </div>
+          
+          <div style="margin-bottom: 20px; padding: 16px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+              🏪 ${message}
+            </p>
+          </div>
+          
+          <div style="margin-bottom: 20px; padding: 16px; background: #dbeafe; border-radius: 8px; border: 1px solid #3b82f6;">
+            <h3 style="margin: 0 0 8px; color: #1e40af; font-size: 16px; font-weight: 600;">What you can do:</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #1e40af; font-size: 14px;">
+              <li>✅ Browse products from other stores</li>
+              <li>✅ Manage your own product inventory</li>
+              <li>✅ Update your store settings</li>
+            </ul>
+          </div>
+          
+          <div style="display: flex; gap: 12px;">
+            <button id="browseOthers" style="
+              flex: 1;
+              background: linear-gradient(135deg, #d3756b, #c25d52);
+              color: white;
+              border: none;
+              padding: 12px 16px;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: transform 0.2s;
+            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+              🛍️ Browse Other Stores
+            </button>
+            <button id="manageProducts" style="
+              flex: 1;
+              background: linear-gradient(135deg, #e7dcca, #d3c2a8);
+              color: #5e3023;
+              border: none;
+              padding: 12px 16px;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: transform 0.2s;
+            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+              📦 Manage Products
+            </button>
+          </div>
+          
+          <button id="closeModal" style="
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #6b7280;
+            padding: 8px;
+            margin-top: 12px;
+            font-size: 14px;
+            cursor: pointer;
+          ">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Add event listeners
+    document.getElementById('browseOthers').onclick = () => {
+      document.getElementById('ownStoreModal').remove();
+      navigate('/products');
+    };
+
+    document.getElementById('manageProducts').onclick = () => {
+      document.getElementById('ownStoreModal').remove();
+      navigate('/manage-products');
+    };
+
+    document.getElementById('closeModal').onclick = () => {
+      document.getElementById('ownStoreModal').remove();
+    };
+
+    // Close on backdrop click
+    document.getElementById('ownStoreModal').onclick = (e) => {
+      if (e.target.id === 'ownStoreModal') {
+        document.getElementById('ownStoreModal').remove();
+      }
+    };
   };
 
   // Check if we have valid order data
