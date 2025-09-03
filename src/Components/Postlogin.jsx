@@ -81,6 +81,11 @@ const PostLoginNavbar = () => {
   // Determine if user is a customer or supplier
   const isCustomer = currentUser?.role === "customer";
   const isSupplier = currentUser?.role === "supplier";
+  const isAdmin = currentUser?.role === "admin"; // ADD
+
+  // Home/Products destinations (admin vs normal)
+  const homeHref = isAdmin ? "/admin" : "/home";
+  const productsHref = isAdmin ? "/admin/products" : "/products";
 
   return (
     <nav
@@ -99,18 +104,32 @@ const PostLoginNavbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
+            {/* CHANGED: Home/Products use computed hrefs */}
             <Link
-              to="/home"
+              to={homeHref}
               className="text-[#5e3023] hover:text-[#d3756b] transition-colors font-medium"
             >
               Home
             </Link>
             <Link
-              to="/products"
+              to={productsHref}
               className="text-[#5e3023] hover:text-[#d3756b] transition-colors font-medium"
             >
               Products
             </Link>
+
+            {/* Admin-specific navigation items (desktop) - ADD */}
+            {isAdmin && (
+              <>
+          
+                <button
+                  onClick={handleLogout}
+                  className="text-[#5e3023] hover:text-[#d3756b] transition-colors font-medium"
+                >
+                  Logout
+                </button>
+              </>
+            )}
 
             {/* Customer-specific navigation items */}
             {isCustomer && (
@@ -330,20 +349,50 @@ const PostLoginNavbar = () => {
         {/* Mobile Navigation Menu */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 p-7 bg-[#5e3023] rounded-md shadow-md">
+            {/* CHANGED: Home/Products use computed hrefs (mobile) */}
             <Link
-              to="/home"
+              to={homeHref}
               className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
               onClick={closeMenu}
             >
               Home
             </Link>
             <Link
-              to="/products"
+              to={productsHref}
               className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
               onClick={closeMenu}
             >
               Products
             </Link>
+
+            {/* Admin mobile menu items - ADD */}
+            {isAdmin && (
+              <>
+                <Link
+                  to="/admin"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  to="/admin/products"
+                  className="block py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                  onClick={closeMenu}
+                >
+                  All Products
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="block w-full text-left py-2 px-4 text-white hover:text-[#d3756b] font-medium"
+                >
+                  Logout
+                </button>
+              </>
+            )}
 
             {/* Customer mobile menu items */}
             {isCustomer && (
